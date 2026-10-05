@@ -1,0 +1,28 @@
+# Personal data: resume sources, PII, and anything derived from them
+data/
+*Resume_Context_Package/
+HANDOFF.md
+*.local.json
+
+# Generated output (tailored PDFs, .tex, saved job descriptions)
+out/
+*.pdf
+
+# Secrets
+.env
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.synctex.gz
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+
+# Local learning notes
+.vibe-wise/
