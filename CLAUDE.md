@@ -11,7 +11,9 @@ Run from PowerShell (Windows) or any shell with uv:
 - `uv run pytest` — run tests
 - `uv run ruff check .` and `uv run ruff format --check .` — lint and format
 
-Tectonic is installed in WSL Ubuntu at `~/.local/bin/tectonic`, not on Windows.
+Tectonic 0.17.0 is installed on Windows at `%LOCALAPPDATA%\Programs\tectonic\tectonic.exe`
+(and in WSL at `~/.local/bin/tectonic`). Compile tests need it on `PATH` or the
+`TECTONIC` environment variable set; otherwise they skip locally.
 
 ## Design rules (agreed; see README "Why it is built this way")
 

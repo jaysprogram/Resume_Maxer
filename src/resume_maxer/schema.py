@@ -25,32 +25,32 @@ SELECTABLE: frozenset[str] = frozenset(
 )
 
 
-class _Model(BaseModel):
+class StrictModel(BaseModel):
     # A misspelled key ("metrcis") fails loudly instead of being silently dropped.
     model_config = ConfigDict(extra="forbid")
 
 
-class Labeled(_Model):
+class Labeled(StrictModel):
     """A single value with its own confidence, e.g. a title that is UNVERIFIED."""
 
     value: str
     status: Status = "CURRENT"
 
 
-class Link(_Model):
+class Link(StrictModel):
     label: str
     url: str
     status: Status = "CURRENT"
 
 
-class Contact(_Model):
+class Contact(StrictModel):
     name: str
     email: str | None = None
     links: list[Link] = []
     extras: list[str] = []
 
 
-class Education(_Model):
+class Education(StrictModel):
     id: str
     school: str
     location: str
@@ -61,19 +61,19 @@ class Education(_Model):
     coursework: list[str] = []
 
 
-class Credential(_Model):
+class Credential(StrictModel):
     id: str
     text: str
     status: Status
 
 
-class Variant(_Model):
+class Variant(StrictModel):
     text: str
     # Bullet IDs this wording overlaps with and must not appear alongside.
     conflicts_with: list[str] = []
 
 
-class Bullet(_Model):
+class Bullet(StrictModel):
     id: str
     status: Status
     tags: list[str] = []
@@ -82,7 +82,7 @@ class Bullet(_Model):
     notes: list[str] = []
 
 
-class Entry(_Model):
+class Entry(StrictModel):
     id: str
     kind: Literal["experience", "leadership", "project"]
     name: str
@@ -95,13 +95,13 @@ class Entry(_Model):
     notes: list[str] = []
 
 
-class Metric(_Model):
+class Metric(StrictModel):
     text: str
     status: Status
     notes: list[str] = []
 
 
-class Skill(_Model):
+class Skill(StrictModel):
     name: str
     category: str
     status: Status
@@ -110,7 +110,7 @@ class Skill(_Model):
     evidence: list[str] = []
 
 
-class Master(_Model):
+class Master(StrictModel):
     contact: Contact
     education: list[Education]
     credentials: list[Credential] = []

@@ -3,8 +3,10 @@
 Tailors a resume to a job description and compiles a one-page LaTeX PDF that
 parses cleanly in applicant tracking systems (ATS).
 
-> Status: early. The pipeline below is the agreed design; LaTeX escaping, the
-> master-data schema/loader and the number check are implemented so far.
+> Status: early. The pipeline below is the agreed design. Implemented so far:
+> LaTeX escaping, the master-data schema/loader, the number check, and
+> rendering + compiling a resume document to a measured one-page PDF. The
+> writer LLM call and the retry loop are next.
 
 ## How it works (design)
 
@@ -77,6 +79,29 @@ Every number in a generated bullet must appear in the metrics that bullet cites.
   use (`~20K dollars`). Rewording "attendees" as "students" is the writer's job,
   so this is shown for review rather than blocking.
 - Known false alarm: "learned about 3 tools" reads *about* as an estimate marker.
+
+## Rendering and compiling
+
+The writer's decisions form a **resume document** (see
+[`examples/sample_resume_doc.json`](examples/sample_resume_doc.json)): which
+entries, which bullets with what wording, which phrases are bold, in what order.
+It names entries by ID only, so names, titles and dates always come from the
+master data. The template does not care whether a model or a person wrote it.
+
+- `render` checks the document against the master (unknown or unusable
+  entries, bullets citing another entry's facts, stack items not in the master)
+  and fills `src/resume_maxer/templates/resume.tex.j2`, a Jinja2 template using
+  `\VAR{}` / `\BLOCK{}` markers so they do not collide with LaTeX. Every value
+  passes through `latex_escape`; bold phrases are wrapped by code.
+- `compile_tex` runs Tectonic with `--untrusted` in a throwaway folder with a
+  timeout, and reads back what LaTeX measured: page count, each bullet's width
+  against the line, and any character the font lacks (which would otherwise
+  print as nothing).
+- A bullet fits when it uses at most 99% of the line (`checks.FIT_RATIO`).
+
+Tectonic must be on `PATH`, or `TECTONIC` must point to the executable.
+Compile tests skip locally without it and fail in CI, which installs a pinned,
+checksum-verified release.
 
 ## Development
 

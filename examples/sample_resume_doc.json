@@ -1,0 +1,32 @@
+{
+  "credentials": ["CRED-1"],
+  "skills": [
+    {"label": "Languages", "items": ["Python", "Go", "SQL"]},
+    {"label": "Tools & Cloud", "items": ["PostgreSQL", "Kubernetes", "CI/CD"]}
+  ],
+  "experience": [
+    {
+      "entry_id": "ACME",
+      "bullets": [
+        {"source_ids": ["ACME-1"], "text": "Shipped a fleet-monitoring dashboard to ~40 field testers across 3 warehouse sites", "bold": ["~40 field testers"]},
+        {"source_ids": ["ACME-2"], "text": "Added CI checks that block merges when simulation tests fail", "bold": ["CI checks"]}
+      ]
+    },
+    {
+      "entry_id": "NWL",
+      "bullets": [
+        {"source_ids": ["NWL-1"], "text": "Automated weekly invoice reconciliation & reporting, saving ~12 hours/week", "bold": ["~12 hours/week"]}
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "entry_id": "WTHR",
+      "stack": ["Go 1.22", "React"],
+      "bullets": [
+        {"source_ids": ["WTHR-1"], "text": "Built a Go/React weather dashboard serving 500+ daily users", "bold": ["500+ daily users"]},
+        {"source_ids": ["WTHR-2"], "text": "Added per-region forecast caching in PostgreSQL to cut API calls", "bold": []}
+      ]
+    }
+  ]
+}

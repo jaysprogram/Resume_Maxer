@@ -1,0 +1,113 @@
+\#{ Resume layout. Rendered by resume_maxer.render; every value passes through a
+   LaTeX-escaping filter (latex, bolded, url) before it lands here.
+   Entry and project macros derive from Jake Gutierrez's resume template,
+   MIT License: https://github.com/jakegut/resume }
+\documentclass[letterpaper,10pt]{article}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage[hidelinks]{hyperref}
+\usepackage{tabularx}
+% OpenType XCharter: under XeTeX the 8-bit charter font extracts "fi"/"fl" as
+% ligature glyphs that ATS keyword search can miss; this one extracts letters.
+\usepackage{fontspec}
+\setmainfont{XCharter}[Extension=.otf, UprightFont=*-Roman, BoldFont=*-Bold,
+  ItalicFont=*-Italic, BoldItalicFont=*-BoldItalic]
+% Log every glyph the font lacks; resume_maxer.compile fails on any. A missing
+% glyph otherwise prints as nothing, silently.
+\tracinglostchars=2
+
+% Balanced page margins: dense, but not cramped.
+\addtolength{\oddsidemargin}{-0.64in}
+\addtolength{\evensidemargin}{-0.64in}
+\addtolength{\textwidth}{1.28in}
+\addtolength{\topmargin}{-0.58in}
+\addtolength{\textheight}{1.12in}
+\setlength{\parindent}{0pt}
+\setlength{\tabcolsep}{0pt}
+\raggedright
+\urlstyle{same}
+\flushbottom
+
+\titleformat{\section}{\vspace{-1pt}\bfseries\large}{}{0em}{}[\vspace{-3pt}\titlerule]
+\titlespacing*{\section}{0pt}{10pt}{6pt}
+
+\newcommand{\entry}[4]{%
+  \begin{tabular*}{\textwidth}{l@{\extracolsep{\fill}}r}
+    \textbf{#1} & \small #2 \\
+    \textit{\small #3} & \textit{\small #4}
+  \end{tabular*}\vspace{2pt}
+}
+\newcommand{\project}[2]{%
+  \begin{tabular*}{\textwidth}{l@{\extracolsep{\fill}}r}
+    \textbf{#1} & \textit{\small #2}
+  \end{tabular*}\vspace{2pt}
+}
+% Fixed-width label box keeps every \cdot and every bullet body aligned.
+% It also measures the body at bullet size and logs it, so the one-line rule
+% is checked against the real typeset width:
+%   BULLETWIDTH <key> <body width> <available width>
+\newlength{\bulletwidth}
+\newcommand{\resumeBullet}[2]{%
+  {\fontsize{9.0}{11.3}\selectfont\noindent
+  \settowidth{\bulletwidth}{#2}%
+  \typeout{BULLETWIDTH #1 \the\bulletwidth\space\the\dimexpr\linewidth-0.16in\relax}%
+  \makebox[0.16in][l]{\(\cdot\)}#2\par}\vspace{1.3pt}
+}
+\newcommand{\skillline}[2]{{\fontsize{9.05}{11.2}\selectfont\textbf{#1:} #2\par}\vspace{0.6pt}}
+
+\begin{document}
+
+\begin{center}
+  {\fontsize{19}{21}\selectfont\textbf{\VAR{contact.name | latex}}}\\[-1pt]
+  {\fontsize{9.05}{10.8}\selectfont
+  \BLOCK{for item in header}
+  \BLOCK{if not loop.first} $|$ \BLOCK{endif}
+  \BLOCK{if item.url}\href{\VAR{item.url | url}}{\VAR{item.label | latex}}\BLOCK{else}\VAR{item.label | latex}\BLOCK{endif}
+  \BLOCK{endfor}
+  }
+\end{center}
+\vspace{-7pt}
+
+\section{Education}
+\BLOCK{for edu in education}
+\entry{\VAR{edu.school | latex}}{\VAR{edu.location | latex}}{\VAR{edu.degree | latex}\BLOCK{if edu.gpa} $|$ GPA: \VAR{edu.gpa | latex}\BLOCK{endif}}{\VAR{edu.dates | latex}}
+\BLOCK{if edu.honors or credentials}
+{\fontsize{8.9}{10.8}\selectfont \BLOCK{if edu.honors}\textbf{Honors:} \VAR{edu.honors | join(', ') | latex}\BLOCK{endif}\BLOCK{if edu.honors and credentials} $|$ \BLOCK{endif}\BLOCK{if credentials}\textbf{Credential:} \VAR{credentials | join(', ') | latex}\BLOCK{endif}\par}
+\BLOCK{endif}
+\BLOCK{if edu.coursework}
+{\fontsize{8.9}{10.8}\selectfont \textbf{Coursework:} \VAR{edu.coursework | join(', ') | latex}\par}
+\BLOCK{endif}
+\BLOCK{endfor}
+\vspace{7pt}
+
+\BLOCK{if skills}
+\section{Technical Skills}
+\BLOCK{for line in skills}
+\skillline{\VAR{line.label | latex}}{\VAR{line.items | join(', ') | latex}}
+\BLOCK{endfor}
+\vspace{7pt}
+\BLOCK{endif}
+
+\BLOCK{if experience}
+\section{Experience}
+\BLOCK{for e in experience}
+\entry{\VAR{e.name | latex}}{\VAR{e.location | latex}}{\VAR{e.title | latex}}{\VAR{e.dates | latex}}
+\BLOCK{for b in e.bullets}
+\resumeBullet{\VAR{b.key}}{\VAR{b.text | bolded(b.bold)}}
+\BLOCK{endfor}
+\vspace{12pt}
+\BLOCK{endfor}
+\BLOCK{endif}
+
+\BLOCK{if projects}
+\section{Projects}
+\BLOCK{for p in projects}
+\project{\VAR{p.name | latex}\BLOCK{if p.stack} $|$ \VAR{p.stack | join(', ') | latex}\BLOCK{endif}}{\VAR{p.dates | latex}}
+\BLOCK{for b in p.bullets}
+\resumeBullet{\VAR{b.key}}{\VAR{b.text | bolded(b.bold)}}
+\BLOCK{endfor}
+\vspace{12pt}
+\BLOCK{endfor}
+\BLOCK{endif}
+
+\end{document}

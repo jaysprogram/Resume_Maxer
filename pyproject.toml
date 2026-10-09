@@ -6,7 +6,9 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
+    "jinja2>=3.1.6",
     "pydantic>=2.14.0",
+    "pypdf>=6.20.0",
 ]
 
 [build-system]
