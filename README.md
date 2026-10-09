@@ -3,8 +3,8 @@
 Tailors a resume to a job description and compiles a one-page LaTeX PDF that
 parses cleanly in applicant tracking systems (ATS).
 
-> Status: early. The pipeline below is the agreed design; only LaTeX escaping
-> is implemented so far.
+> Status: early. The pipeline below is the agreed design; LaTeX escaping and
+> the master-data schema/loader are implemented so far.
 
 ## How it works (design)
 
@@ -37,6 +37,28 @@ job description
   8-bit `charter` font under XeTeX extracts "fi"/"fl" as ligature glyphs (`ﬁles`),
   which ATS keyword search can miss; the OpenType font extracts plain letters,
   identical to pdfLaTeX.
+
+## Master data
+
+All facts live in one JSON file, `master.json`, read from the folder named by
+`RESUME_DATA_DIR` (default `data/`, which is gitignored). The format is shown by
+the fictional [`examples/sample_master.json`](examples/sample_master.json).
+
+- **Entries** (experience, leadership, projects) hold **bullets**. Each bullet
+  has one or more wording `variants`, `tags`, `notes`, and the IDs of the
+  **metrics** it may use.
+- **Metrics** live in one top-level table keyed by ID. A number may appear in a
+  generated bullet only if it comes from one of that bullet's metrics.
+- **Skills** list aliases (for job-description matching) and evidence (bullet or
+  entry IDs). A skill with no evidence belongs in the skills section only.
+- Every fact carries a status: `CURRENT`, `ARCHIVED`, `DEFENSIBLE ESTIMATE`,
+  `QUALITATIVE ONLY`, `UNVERIFIED`, `UNKNOWN` or `INVALID`. Only the first four
+  are ever offered to the writer; the rest stay in the file as a record of what
+  not to claim.
+
+Loading fails with a message naming the problem when a referenced ID does not
+exist, an ID is used twice, a status or field name is misspelled, or the JSON
+repeats a key.
 
 ## Development
 

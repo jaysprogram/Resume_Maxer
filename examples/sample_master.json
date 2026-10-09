@@ -1,0 +1,153 @@
+{
+  "contact": {
+    "name": "Alex Rivera",
+    "email": "alex.rivera@example.com",
+    "links": [
+      {"label": "code.example.com/alex", "url": "https://code.example.com/alex"},
+      {"label": "profile.example.com/alex", "url": "https://profile.example.com/alex", "status": "UNVERIFIED"}
+    ],
+    "extras": ["Open to relocation"]
+  },
+  "education": [
+    {
+      "id": "EDU",
+      "school": "Example State University",
+      "location": "Springfield, ST",
+      "degree": "B.S. Computer Science",
+      "dates": "Aug 2023 -- May 2027",
+      "gpa": {"value": "3.5", "status": "UNVERIFIED"},
+      "honors": ["Dean's List"],
+      "coursework": ["Data Structures", "Operating Systems", "Machine Learning"]
+    }
+  ],
+  "credentials": [
+    {"id": "CRED-1", "text": "Example Safety Certification", "status": "CURRENT"}
+  ],
+  "entries": [
+    {
+      "id": "ACME",
+      "kind": "experience",
+      "name": "Acme Robotics",
+      "title": {"value": "Software Engineering Intern", "status": "UNVERIFIED"},
+      "location": {"value": "Springfield, ST"},
+      "dates": {"value": "May 2026 -- Aug 2026"},
+      "bullets": [
+        {
+          "id": "ACME-1",
+          "status": "CURRENT",
+          "tags": ["Python", "fleet monitoring", "dashboards"],
+          "variants": {
+            "current": {"text": "Built a Python fleet-monitoring dashboard used by field testers across 3 warehouse sites"},
+            "impact": {"text": "Shipped a fleet-monitoring dashboard to ~40 field testers across 3 warehouse sites"}
+          },
+          "metrics": ["ACME-M1", "ACME-M2"]
+        },
+        {
+          "id": "ACME-2",
+          "status": "CURRENT",
+          "tags": ["CI/CD", "testing"],
+          "variants": {
+            "current": {"text": "Added CI checks that block merges when simulation tests fail"}
+          },
+          "notes": ["Qualitative only: no recorded failure-rate numbers"]
+        },
+        {
+          "id": "ACME-3",
+          "status": "INVALID",
+          "tags": ["leadership"],
+          "variants": {
+            "current": {"text": "Led the robotics hackathon"}
+          },
+          "notes": ["Context mix-up; never use"]
+        }
+      ]
+    },
+    {
+      "id": "NWL",
+      "kind": "experience",
+      "name": "Northwind Logistics",
+      "title": {"value": "Automation Contractor"},
+      "location": {"value": "Remote"},
+      "dates": {"value": "Jan 2026"},
+      "bullets": [
+        {
+          "id": "NWL-1",
+          "status": "ARCHIVED",
+          "tags": ["Python", "automation", "spreadsheets"],
+          "variants": {
+            "current": {"text": "Automated weekly invoice reconciliation, saving ~12 hours/week"}
+          },
+          "metrics": ["NWL-M1"]
+        },
+        {
+          "id": "NWL-2",
+          "status": "UNVERIFIED",
+          "tags": ["SQL"],
+          "variants": {
+            "current": {"text": "Optimized reporting queries"}
+          },
+          "metrics": ["NWL-M2"]
+        }
+      ]
+    },
+    {
+      "id": "CLUB",
+      "kind": "leadership",
+      "name": "Example Robotics Club",
+      "status": "INVALID",
+      "title": {"value": "President"},
+      "dates": {"value": "Sep 2025 -- May 2026"},
+      "bullets": [
+        {
+          "id": "CLUB-1",
+          "status": "CURRENT",
+          "variants": {"current": {"text": "Ran weekly build sessions"}}
+        }
+      ]
+    },
+    {
+      "id": "WTHR",
+      "kind": "project",
+      "name": "Weather Dashboard",
+      "dates": {"value": "Mar 2026 -- Apr 2026"},
+      "stack": ["Go", "React", "PostgreSQL"],
+      "bullets": [
+        {
+          "id": "WTHR-1",
+          "status": "CURRENT",
+          "tags": ["Go", "React", "REST"],
+          "variants": {
+            "current": {"text": "Built a Go/React weather dashboard serving 500+ daily users, with forecast caching"},
+            "compact": {"text": "Built a Go/React weather dashboard serving 500+ daily users", "conflicts_with": []},
+            "detailed": {"text": "Built a Go/React weather dashboard with per-region forecast caching and alerting", "conflicts_with": ["WTHR-2"]}
+          },
+          "metrics": ["WTHR-M1"]
+        },
+        {
+          "id": "WTHR-2",
+          "status": "CURRENT",
+          "tags": ["caching", "PostgreSQL"],
+          "variants": {
+            "current": {"text": "Added per-region forecast caching in PostgreSQL to cut API calls"}
+          },
+          "metrics": ["WTHR-M2"]
+        }
+      ]
+    }
+  ],
+  "metrics": {
+    "ACME-M1": {"text": "~40 field testers used the dashboard", "status": "DEFENSIBLE ESTIMATE"},
+    "ACME-M2": {"text": "3 warehouse sites", "status": "CURRENT"},
+    "NWL-M1": {"text": "~12 hours/week saved", "status": "DEFENSIBLE ESTIMATE", "notes": ["Hours, not dollars"]},
+    "NWL-M2": {"text": "Query speedup", "status": "UNKNOWN", "notes": ["Never measured; do not quantify"]},
+    "WTHR-M1": {"text": "500+ daily users", "status": "DEFENSIBLE ESTIMATE"},
+    "WTHR-M2": {"text": "API call reduction from caching", "status": "QUALITATIVE ONLY"}
+  },
+  "skills": [
+    {"name": "Python", "category": "Languages", "status": "CURRENT", "evidence": ["ACME-1", "NWL"]},
+    {"name": "Go", "category": "Languages", "status": "CURRENT", "aliases": ["Golang"], "evidence": ["WTHR-1"]},
+    {"name": "PostgreSQL", "category": "Databases", "status": "CURRENT", "aliases": ["Postgres"], "evidence": ["WTHR-2"]},
+    {"name": "Kubernetes", "category": "Cloud", "status": "CURRENT", "aliases": ["k8s"], "evidence": []},
+    {"name": "Rust", "category": "Languages", "status": "UNVERIFIED"}
+  ]
+}
