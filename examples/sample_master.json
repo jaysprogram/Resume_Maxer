@@ -14,7 +14,7 @@
       "school": "Example State University",
       "location": "Springfield, ST",
       "degree": "B.S. Computer Science",
-      "dates": "Aug 2023 -- May 2027",
+      "dates": "Aug 2023 – May 2027",
       "gpa": {"value": "3.5", "status": "UNVERIFIED"},
       "honors": ["Dean's List"],
       "coursework": ["Data Structures", "Operating Systems", "Machine Learning"]
@@ -30,7 +30,7 @@
       "name": "Acme Robotics",
       "title": {"value": "Software Engineering Intern", "status": "UNVERIFIED"},
       "location": {"value": "Springfield, ST"},
-      "dates": {"value": "May 2026 -- Aug 2026"},
+      "dates": {"value": "May 2026 – Aug 2026"},
       "bullets": [
         {
           "id": "ACME-1",
@@ -96,7 +96,7 @@
       "name": "Example Robotics Club",
       "status": "INVALID",
       "title": {"value": "President"},
-      "dates": {"value": "Sep 2025 -- May 2026"},
+      "dates": {"value": "Sep 2025 – May 2026"},
       "bullets": [
         {
           "id": "CLUB-1",
@@ -109,8 +109,8 @@
       "id": "WTHR",
       "kind": "project",
       "name": "Weather Dashboard",
-      "dates": {"value": "Mar 2026 -- Apr 2026"},
-      "stack": ["Go", "React", "PostgreSQL"],
+      "dates": {"value": "Mar 2026 – Apr 2026"},
+      "stack": ["Go 1.22", "React", "PostgreSQL"],
       "bullets": [
         {
           "id": "WTHR-1",

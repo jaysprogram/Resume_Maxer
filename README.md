@@ -3,8 +3,8 @@
 Tailors a resume to a job description and compiles a one-page LaTeX PDF that
 parses cleanly in applicant tracking systems (ATS).
 
-> Status: early. The pipeline below is the agreed design; LaTeX escaping and
-> the master-data schema/loader are implemented so far.
+> Status: early. The pipeline below is the agreed design; LaTeX escaping, the
+> master-data schema/loader and the number check are implemented so far.
 
 ## How it works (design)
 
@@ -59,6 +59,24 @@ the fictional [`examples/sample_master.json`](examples/sample_master.json).
 Loading fails with a message naming the problem when a referenced ID does not
 exist, an ID is used twice, a status or field name is misspelled, or the JSON
 repeats a key.
+
+## The number check
+
+Every number in a generated bullet must appear in the metrics that bullet cites.
+
+- **What counts as a number:** digits, plus spelled-out *two* to *ten*. Names
+  that contain digits are skipped when digits are glued to letters (`YOLOv8`,
+  `Nav2`) or the name appears in the master data's skills, aliases, stacks or
+  tags (`ROS 2`, `Sonnet 4.6`). A digit-bearing name missing from the data is
+  treated as a number, the safe direction. *One* is not counted: it is common
+  in plain English ("one-time") and never carried a metric in testing.
+- **What must match (fails the bullet):** the value, the estimate markers `~`
+  and `+`, and the symbols `$`, `%`, `K`. *approximately* and *about* count as
+  `~`. So `1,000` fails against `~1,000`, and `$20K` fails against `~20K tokens`.
+- **What is only flagged:** a unit word after the number that the metrics never
+  use (`~20K dollars`). Rewording "attendees" as "students" is the writer's job,
+  so this is shown for review rather than blocking.
+- Known false alarm: "learned about 3 tools" reads *about* as an estimate marker.
 
 ## Development
 

@@ -164,3 +164,11 @@ class Master(_Model):
             for bullet in entry.bullets:
                 if bullet.status in SELECTABLE:
                     yield entry, bullet
+
+    def tech_names(self) -> list[str]:
+        """Names containing digits (ROS 2, Sonnet 4.6) that the number check must skip."""
+        names = {n for s in self.skills for n in (s.name, *s.aliases)}
+        for entry in self.entries:
+            names.update(entry.stack)
+            names.update(t for b in entry.bullets for t in b.tags)
+        return sorted(n for n in names if any(c.isdigit() for c in n))
