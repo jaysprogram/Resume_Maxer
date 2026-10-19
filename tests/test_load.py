@@ -30,7 +30,9 @@ def test_missing_file_says_where_it_looked_and_how_to_fix(tmp_path, monkeypatch)
 
 def test_malformed_json_reports_line(tmp_path):
     path = tmp_path / MASTER_FILENAME
-    path.write_text('{\n  "contact": {},\n}\n', encoding="utf-8")
+    # A missing comma, not a trailing one: Python 3.13+ reports a trailing comma
+    # on the line of the comma, 3.12 on the line after, so it can't pin a line.
+    path.write_text('{\n  "contact": {}\n  "education": []\n}\n', encoding="utf-8")
     with pytest.raises(MasterDataError, match=r"not valid JSON \(line 3"):
         load_master(path)
 
