@@ -22,8 +22,17 @@ def test_sample_compiles_to_one_clean_page(tectonic, sample_data, sample_doc_dat
     result = compile_doc(sample_data, sample_doc_data)
     assert result.pages == 1
     assert result.missing_glyphs == []
-    assert [w.key for w in result.widths] == ["ACME.1", "ACME.2", "NWL.1", "WTHR.1", "WTHR.2"]
+    keys = ["skills.1", "skills.2", "ACME.1", "ACME.2", "NWL.1", "WTHR.1", "WTHR.2"]
+    assert [w.key for w in result.widths] == keys
     assert overflowing(result.widths) == []
+
+
+def test_overlong_skills_line_is_measured_as_overflowing(tectonic, sample_data, sample_doc_data):
+    # Regression: only bullets were measured, so a skills line that wrapped to a
+    # second line went unnoticed and pushed a real resume onto two pages.
+    sample_doc_data["skills"][1]["items"] = ["PostgreSQL", "Kubernetes", "CI/CD"] * 8
+    result = compile_doc(sample_data, sample_doc_data)
+    assert [w.key for w in overflowing(result.widths)] == ["skills.2"]
 
 
 def test_overlong_bullet_is_measured_as_overflowing(tectonic, sample_data, sample_doc_data):

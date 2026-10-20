@@ -4,9 +4,9 @@ Tailors a resume to a job description and compiles a one-page LaTeX PDF that
 parses cleanly in applicant tracking systems (ATS).
 
 > Status: early. The pipeline below is the agreed design. Implemented so far:
-> LaTeX escaping, the master-data schema/loader, the number check, and
-> rendering + compiling a resume document to a measured one-page PDF. The
-> writer LLM call and the retry loop are next.
+> LaTeX escaping, the master-data schema/loader, the number check, rendering +
+> compiling a resume document to a measured one-page PDF, and the writer call.
+> The retry loop and a command-line entry point are next.
 
 ## How it works (design)
 
@@ -89,19 +89,49 @@ It names entries by ID only, so names, titles and dates always come from the
 master data. The template does not care whether a model or a person wrote it.
 
 - `render` checks the document against the master (unknown or unusable
-  entries, bullets citing another entry's facts, stack items not in the master)
+  entries, bullets citing another entry's facts, stack items not in the master,
+  a credential the header already shows)
   and fills `src/resume_maxer/templates/resume.tex.j2`, a Jinja2 template using
   `\VAR{}` / `\BLOCK{}` markers so they do not collide with LaTeX. Every value
   passes through `latex_escape`; bold phrases are wrapped by code.
 - `compile_tex` runs Tectonic with `--untrusted` in a throwaway folder with a
-  timeout, and reads back what LaTeX measured: page count, each bullet's width
-  against the line, and any character the font lacks (which would otherwise
-  print as nothing).
-- A bullet fits when it uses at most 99% of the line (`checks.FIT_RATIO`).
+  timeout, and reads back what LaTeX measured: page count, the width of each
+  bullet and each skills line against the line, and any character the font
+  lacks (which would otherwise print as nothing).
+- A bullet or skills line fits when it uses at most 99% of the line
+  (`checks.FIT_RATIO`). Skills lines are measured too: one that wraps costs a
+  whole line and can push the page to two.
 
 Tectonic must be on `PATH`, or `TECTONIC` must point to the executable.
 Compile tests skip locally without it and fail in CI, which installs a pinned,
 checksum-verified release.
+
+## The writer
+
+`writer.write_resume` asks Claude for a resume document in one call, using
+structured outputs so the answer is parsed straight into `ResumeDoc`.
+
+- **Model:** Claude Sonnet 5.5 at `high` effort (`writer.MODEL`, `writer.EFFORT`).
+  In a side-by-side run on one posting, Haiku 5.5 and Sonnet 5.5 at medium and
+  high effort all passed every code check; Sonnet at high effort chose the
+  entries that best matched the posting. Haiku was about 7x cheaper but chose
+  weaker content.
+- **Cost:** about $0.14 per resume with a cold cache, about $0.08 when the
+  master data is still cached (within 5 minutes). The whole master goes in a
+  cached system block; the job description goes in the user turn.
+- **Trust:** the job description is treated as untrusted text, and the model's
+  answer is never trusted either: it passes through the same checks as a
+  hand-written document.
+- **Two ways to reach Claude** (`writer.BACKENDS`, same instructions and checks):
+  - `claude-code` (the default, `writer.BACKEND`): runs Claude Code headless
+    (`claude -p`) on its logged-in Claude subscription. The model gets no tools,
+    runs in an empty temp folder (so no `CLAUDE.md` or memory leaks into the
+    prompt), and receives the job description on stdin. Claude Code must be on
+    `PATH`, or `CLAUDE_CODE` must point to the executable. Its reported cost is
+    the list-price equivalent; a subscription is not billed per token.
+  - `api`: the Anthropic SDK with an API key (`ANTHROPIC_API_KEY` or another
+    credential source the SDK supports). Keep keys in `.env`, which is
+    gitignored. This is the path for a server without a subscription.
 
 ## Development
 

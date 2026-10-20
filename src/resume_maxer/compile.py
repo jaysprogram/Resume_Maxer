@@ -15,7 +15,7 @@ TECTONIC_ENV = "TECTONIC"
 # Generous because Tectonic downloads missing packages on its first run.
 DEFAULT_TIMEOUT_S = 180
 
-_WIDTH = re.compile(r"^BULLETWIDTH (\S+) ([\d.]+)pt ([\d.]+)pt$", re.MULTILINE)
+_WIDTH = re.compile(r"^LINEWIDTH (\S+) ([\d.]+)pt ([\d.]+)pt$", re.MULTILINE)
 # Only the character and its code point: TeX wraps log lines at 79 columns,
 # which cuts the font name that follows mid-word.
 _MISSING = re.compile(r"^Missing character: There is no (.+?) in font", re.MULTILINE)
@@ -26,10 +26,10 @@ class CompileError(RuntimeError):
 
 
 @dataclass(frozen=True)
-class BulletWidth:
-    key: str  # entry ID and position, e.g. "NEE.2"
-    width_pt: float  # typeset width of the bullet body
-    available_pt: float  # line width minus the marker box
+class LineWidth:
+    key: str  # a bullet's entry ID and position ("NEE.2"), or a skills line ("skills.1")
+    width_pt: float  # typeset width of the line's text
+    available_pt: float  # width the text may use (a bullet's excludes its marker box)
 
     @property
     def ratio(self) -> float:
@@ -40,7 +40,7 @@ class BulletWidth:
 class CompileResult:
     pdf: bytes
     pages: int
-    widths: list[BulletWidth]
+    widths: list[LineWidth]
     missing_glyphs: list[str]
     log: str
 
@@ -91,7 +91,7 @@ def compile_tex(tex: str, timeout_s: float = DEFAULT_TIMEOUT_S) -> CompileResult
             raise CompileError("Tectonic failed:\n" + _tail(proc.stderr or log))
         pdf = (Path(tmp) / "resume.pdf").read_bytes()
 
-    widths = [BulletWidth(k, float(w), float(a)) for k, w, a in _WIDTH.findall(log)]
+    widths = [LineWidth(k, float(w), float(a)) for k, w, a in _WIDTH.findall(log)]
     missing = sorted(set(_MISSING.findall(log)))
     pages = len(PdfReader(BytesIO(pdf)).pages)
     return CompileResult(pdf=pdf, pages=pages, widths=widths, missing_glyphs=missing, log=log)

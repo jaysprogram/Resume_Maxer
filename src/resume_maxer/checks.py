@@ -4,14 +4,14 @@ from io import BytesIO
 
 from pypdf import PdfReader
 
-from resume_maxer.compile import BulletWidth
+from resume_maxer.compile import LineWidth
 
-# A bullet must use at most 99% of the line, a small margin so a bullet that
-# fits by a hair does not wrap after a one-character rewrite elsewhere.
+# A bullet or skills line must use at most 99% of the line, a small margin so a
+# line that fits by a hair does not wrap after a one-character rewrite elsewhere.
 FIT_RATIO = 0.99
 
 
-def overflowing(widths: list[BulletWidth], fit_ratio: float = FIT_RATIO) -> list[BulletWidth]:
+def overflowing(widths: list[LineWidth], fit_ratio: float = FIT_RATIO) -> list[LineWidth]:
     return [w for w in widths if w.ratio > fit_ratio]
 
 

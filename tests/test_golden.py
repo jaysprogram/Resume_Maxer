@@ -66,8 +66,10 @@ def test_one_page_no_missing_glyphs(compiled):
     assert compiled.missing_glyphs == []
 
 
-def test_every_bullet_fits_one_line(compiled):
-    assert len(compiled.widths) == 20
+def test_every_bullet_and_skills_line_fits_one_line(golden, compiled):
+    _, doc = golden
+    bullets = sum(len(e.bullets) for e in doc.experience + doc.projects)
+    assert len(compiled.widths) == bullets + len(doc.skills)
     assert [(w.key, f"{w.ratio:.1%}") for w in overflowing(compiled.widths)] == []
 
 

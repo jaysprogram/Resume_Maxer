@@ -42,18 +42,23 @@
     \textbf{#1} & \textit{\small #2}
   \end{tabular*}\vspace{2pt}
 }
+% Every one-line element measures its text at its own size and logs it, so the
+% one-line rule is checked against the real typeset width:
+%   LINEWIDTH <key> <text width> <available width>
+\newlength{\linemeasure}
 % Fixed-width label box keeps every \cdot and every bullet body aligned.
-% It also measures the body at bullet size and logs it, so the one-line rule
-% is checked against the real typeset width:
-%   BULLETWIDTH <key> <body width> <available width>
-\newlength{\bulletwidth}
 \newcommand{\resumeBullet}[2]{%
   {\fontsize{9.0}{11.3}\selectfont\noindent
-  \settowidth{\bulletwidth}{#2}%
-  \typeout{BULLETWIDTH #1 \the\bulletwidth\space\the\dimexpr\linewidth-0.16in\relax}%
+  \settowidth{\linemeasure}{#2}%
+  \typeout{LINEWIDTH #1 \the\linemeasure\space\the\dimexpr\linewidth-0.16in\relax}%
   \makebox[0.16in][l]{\(\cdot\)}#2\par}\vspace{1.3pt}
 }
-\newcommand{\skillline}[2]{{\fontsize{9.05}{11.2}\selectfont\textbf{#1:} #2\par}\vspace{0.6pt}}
+\newcommand{\skillline}[3]{%
+  {\fontsize{9.05}{11.2}\selectfont
+  \settowidth{\linemeasure}{\textbf{#2:} #3}%
+  \typeout{LINEWIDTH #1 \the\linemeasure\space\the\linewidth}%
+  \textbf{#2:} #3\par}\vspace{0.6pt}
+}
 
 \begin{document}
 
@@ -83,7 +88,7 @@
 \BLOCK{if skills}
 \section{Technical Skills}
 \BLOCK{for line in skills}
-\skillline{\VAR{line.label | latex}}{\VAR{line.items | join(', ') | latex}}
+\skillline{skills.\VAR{loop.index}}{\VAR{line.label | latex}}{\VAR{line.items | join(', ') | latex}}
 \BLOCK{endfor}
 \vspace{7pt}
 \BLOCK{endif}

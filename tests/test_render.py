@@ -108,6 +108,16 @@ def test_unknown_credential(master, sample_doc_data):
     assert problems(doc_from(sample_doc_data), master) == ["unknown credential 'CRED-9'"]
 
 
+def test_credential_repeating_the_header(sample_data, sample_doc_data):
+    # Regression: a writer run listed a credential the header already shows,
+    # printing it twice and crowding out a credential that wasn't shown.
+    sample_data["contact"]["extras"].append("Example Safety Certification")
+    master = Master.model_validate(sample_data)
+    assert problems(doc_from(sample_doc_data), master) == [
+        "credential 'CRED-1' repeats the header's 'Example Safety Certification'"
+    ]
+
+
 # --- render ------------------------------------------------------------------
 
 

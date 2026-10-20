@@ -53,6 +53,8 @@ def problems(doc: ResumeDoc, master: Master) -> list[str]:
             found.append(f"unknown credential {cred_id!r}")
         elif cred.status not in SELECTABLE:
             found.append(f"credential {cred_id!r} is {cred.status}")
+        elif cred.text in master.contact.extras:
+            found.append(f"credential {cred_id!r} repeats the header's {cred.text!r}")
 
     for section, kinds in SECTION_KINDS.items():
         for doc_entry in getattr(doc, section):
