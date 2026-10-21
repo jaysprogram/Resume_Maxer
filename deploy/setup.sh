@@ -16,6 +16,8 @@ CODE=/opt/$APP
 STATE=/var/lib/$APP
 ETC=/etc/$APP
 PORT=8791
+CLAUDE_DIR=/opt/$APP-claude
+CLAUDE_CODE_VERSION=2.1.304  # the version the claude-code backend was tested with
 
 [[ $EUID -eq 0 ]] || { echo "run as root" >&2; exit 1; }
 
@@ -60,6 +62,20 @@ if ! /usr/local/bin/tectonic --version 2>/dev/null | grep -q "$TECTONIC_VERSION"
 fi
 /usr/local/bin/tectonic --version
 
+echo "== claude code (for the claude-code backend)"
+# The app's own copy, pinned, outside /root (the service cannot read /root) and
+# apart from any other Claude Code on this server. Self-update is off in the
+# unit, since this folder is read-only to the service.
+backend=$(sed -n "s/^RESUME_BACKEND='\(.*\)'$/\1/p" "$ETC/env" 2>/dev/null || true)
+if [[ $backend != api ]]; then
+  if [[ ! -x $CLAUDE_DIR/node_modules/.bin/claude ]] ||
+     ! "$CLAUDE_DIR/node_modules/.bin/claude" --version 2>/dev/null | grep -q "^$CLAUDE_CODE_VERSION "; then
+    npm install --prefix "$CLAUDE_DIR" --no-fund --no-audit --loglevel=error \
+      "@anthropic-ai/claude-code@$CLAUDE_CODE_VERSION"
+  fi
+  "$CLAUDE_DIR/node_modules/.bin/claude" --version
+fi
+
 echo "== warm the Tectonic cache (first compile downloads fonts and packages)"
 runuser -u "$APP" -- env XDG_CACHE_HOME="$STATE/cache" TECTONIC=/usr/local/bin/tectonic \
   "$CODE/.venv/bin/python" -c '
@@ -92,8 +108,9 @@ systemctl reload caddy
 echo "== start"
 missing=()
 [[ -f $STATE/data/master.json ]] || missing+=("$STATE/data/master.json (copy it from your machine)")
-for key in RESUME_WEB_PASSWORD_HASH RESUME_WEB_SECRET ANTHROPIC_API_KEY; do
-  grep -q "^$key=" "$ETC/env" 2>/dev/null || missing+=("$key in $ETC/env (run deploy/set-secrets.sh)")
+key=$([[ $backend == api ]] && echo ANTHROPIC_API_KEY || echo CLAUDE_CODE_OAUTH_TOKEN)
+for name in RESUME_WEB_PASSWORD_HASH RESUME_WEB_SECRET RESUME_BACKEND "$key"; do
+  grep -q "^$name=" "$ETC/env" 2>/dev/null || missing+=("$name in $ETC/env (run deploy/set-secrets.sh)")
 done
 if ((${#missing[@]})); then
   printf 'not started yet; missing:\n'

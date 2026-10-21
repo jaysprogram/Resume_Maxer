@@ -9,12 +9,15 @@ Type=simple
 User=resume-maxer
 Group=resume-maxer
 WorkingDirectory=/var/lib/resume-maxer
-# Secrets (password hash, session secret, API key), written by set-secrets.sh.
+# Secrets and the backend choice (RESUME_BACKEND plus an API key or a Claude
+# subscription token), written by set-secrets.sh.
 EnvironmentFile=/etc/resume-maxer/env
 Environment=RESUME_DATA_DIR=/var/lib/resume-maxer/data
 Environment=RESUME_RUNS_DIR=/var/lib/resume-maxer/runs
-Environment=RESUME_BACKEND=api
 Environment=TECTONIC=/usr/local/bin/tectonic
+# The app's own Claude Code (setup.sh installs it); its folder is read-only here.
+Environment=CLAUDE_CODE=/opt/resume-maxer-claude/node_modules/.bin/claude
+Environment=DISABLE_AUTOUPDATER=1
 # Tectonic keeps its package cache here; ProtectHome hides the usual ~/.cache.
 Environment=XDG_CACHE_HOME=/var/lib/resume-maxer/cache
 ExecStart=/opt/resume-maxer/.venv/bin/resume-maxer serve --host 127.0.0.1 --port 8791

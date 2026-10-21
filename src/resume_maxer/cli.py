@@ -174,7 +174,8 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-MIN_PASSWORD_CHARS = 12
+# With 5 guesses per address per 15 minutes and a slow hash, 8 is a fair floor.
+MIN_PASSWORD_CHARS = 8
 
 
 def cmd_hash_password(args: argparse.Namespace) -> int:

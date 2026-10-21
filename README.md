@@ -74,11 +74,18 @@ uv run --env-file .env resume-maxer serve
 3. Copy your master data to `/var/lib/resume-maxer/data/master.json`
    (owner `resume-maxer`, mode `600`).
 4. Interactively on the server: `bash /opt/resume-maxer/deploy/set-secrets.sh`
-   (password, API key; nothing is echoed or put on a command line), then run
-   `setup.sh` again to start the service.
+   (nothing is echoed or put on a command line), then run `setup.sh` again to
+   start the service. It asks for the web password and how to reach Claude:
+   - an **Anthropic API key**: the `api` backend, billed per run (about $0.14
+     to $0.28 a resume); or
+   - a **Claude subscription token**: run `claude setup-token` on a machine
+     where you are logged in to Claude Code and paste the token. This is the
+     `claude-code` backend; `setup.sh` installs the app's own pinned Claude
+     Code in `/opt/resume-maxer-claude` (outside `/root`, apart from any other
+     Claude Code on the server), and runs count against the subscription's
+     usage limits.
 
-Updates: push to GitHub, then rerun `setup.sh`. The server uses the `api`
-backend, so each run is billed to the API key (about $0.14 to $0.28 a resume).
+Updates: push to GitHub, then rerun `setup.sh`.
 
 ## How it works (design)
 
