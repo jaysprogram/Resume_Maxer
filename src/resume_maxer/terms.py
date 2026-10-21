@@ -40,6 +40,7 @@ STOPWORDS = frozenset(
     build built building create created creating deliver delivered design designed
     designing develop developed developing drive driven enable enabled enhance help
     helped implement implemented improve improved lead led make made manage managed
+    move moved moving fast quickly
     own owned provide provided run ran ship shipped support supported use used work
     worked working write wrote written
 

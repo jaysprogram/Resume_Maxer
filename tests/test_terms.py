@@ -56,6 +56,8 @@ def test_a_skill_named_in_the_facts_backs_its_aliases(master, sample_doc_data):
 
 def test_common_words_are_never_flagged():
     assert words("We build tools and systems for teams using technologies") == []
+    # Regression: a real server run flagged "move" from "you'll move fast".
+    assert words("You will move fast and learn quickly") == ["learn"]
 
 
 def test_review_reports_borrowed_terms_as_flags_never_failures(master, sample_doc_data):
