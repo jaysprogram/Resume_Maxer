@@ -16,9 +16,11 @@ from resume_maxer.writer import (
     MODEL,
     PRICES,
     SYSTEM,
+    Repair,
     WriterError,
     cost_usd,
     find_claude,
+    user_message,
     write_resume_api,
     write_resume_claude_code,
 )
@@ -209,3 +211,33 @@ def test_claude_code_env_pointing_nowhere_is_reported(monkeypatch, tmp_path):
     monkeypatch.setenv(writer.CLAUDE_ENV, str(tmp_path / "nope.exe"))
     with pytest.raises(WriterError, match="does not exist"):
         find_claude()
+
+
+# --- the repair request ------------------------------------------------------
+
+
+def test_repair_request_carries_the_failures_and_the_failed_document(doc):
+    failure = "ACME.1 uses 104% of the line: cut at least 5 characters"
+    client = fake_client(parsed_output=doc)
+    write_resume_api(MASTER_TEXT, JD, client=client, repair=Repair(doc, [failure]))
+    [call] = client.messages.calls
+
+    content = call["messages"][0]["content"]
+    assert f"<job_description>\n{JD}\n</job_description>" in content
+    assert f"<failures>\n- {failure}\n</failures>" in content
+    assert doc.model_dump_json(indent=1) in content
+    # Same instructions and master as the draft, so the cached prefix is reused.
+    assert call["system"][0]["text"] == SYSTEM and MASTER_TEXT in call["system"][1]["text"]
+
+
+def test_draft_request_has_no_repair_sections():
+    message = user_message(JD)
+    assert "<failures>" not in message and "<previous_document>" not in message
+
+
+def test_claude_code_repair_goes_in_on_stdin(run_claude, sample_doc_data):
+    doc = ResumeDoc.model_validate(sample_doc_data)
+    fake = run_claude(FakeClaude(claude_reply(sample_doc_data)))
+    write_resume_claude_code(MASTER_TEXT, JD, repair=Repair(doc, ["NWL.1 lacks its ~"]))
+    assert "- NWL.1 lacks its ~" in fake.kwargs["input"]
+    assert all("NWL.1 lacks" not in arg for arg in fake.cmd)

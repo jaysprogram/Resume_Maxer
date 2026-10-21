@@ -6,7 +6,7 @@ from pathlib import Path
 import jinja2
 
 from resume_maxer.latex import latex_escape
-from resume_maxer.resume_doc import ResumeDoc, problems
+from resume_maxer.resume_doc import ResumeDoc, bullet_key, problems
 from resume_maxer.schema import SELECTABLE, Entry, Master
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
@@ -77,7 +77,7 @@ def _entry_view(entry: Entry, stack: list[str], bullets) -> dict:
         "stack": stack,
         # The key labels each bullet's width in the compile log.
         "bullets": [
-            {"key": f"{entry.id}.{i}", "text": b.text, "bold": b.bold}
+            {"key": bullet_key(entry.id, i), "text": b.text, "bold": b.bold}
             for i, b in enumerate(bullets, start=1)
         ],
     }

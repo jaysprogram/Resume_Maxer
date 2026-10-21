@@ -5,8 +5,8 @@ parses cleanly in applicant tracking systems (ATS).
 
 > Status: early. The pipeline below is the agreed design. Implemented so far:
 > LaTeX escaping, the master-data schema/loader, the number check, rendering +
-> compiling a resume document to a measured one-page PDF, and the writer call.
-> The retry loop and a command-line entry point are next.
+> compiling a resume document to a measured one-page PDF, the writer call, and
+> the check-and-repair loop. A command-line entry point is next.
 
 ## How it works (design)
 
@@ -132,6 +132,31 @@ structured outputs so the answer is parsed straight into `ResumeDoc`.
   - `api`: the Anthropic SDK with an API key (`ANTHROPIC_API_KEY` or another
     credential source the SDK supports). Keep keys in `.env`, which is
     gitignored. This is the path for a server without a subscription.
+
+## Check and repair
+
+`pipeline.tailor` runs the whole loop: the writer drafts a document, then code
+checks it (`review.review`): structure, skills, number provenance, page
+count, every line's width, and missing glyphs.
+
+- **Skills** (`skills.py`): every item on a skills line must be a usable master
+  skill name or alias, or a usable entry's stack item, ignoring case and
+  spacing. Groups are checked part by part: in `AWS (EC2, Lambda)`, "Lambda"
+  counts if "Lambda" or "AWS Lambda" is known. A typo (`NET` for `.NET`), an
+  invented skill, or an `UNVERIFIED` one fails.
+
+- Each **failure** says what is wrong and what to do, precisely enough for a
+  model to act on: `PINE.1 uses 133% of the line (at most 99% fits): cut at
+  least 48 characters from '...'`.
+- Any failure gets **one repair**: the writer receives the failed document
+  and its failures, and is asked to fix only those. The instructions and
+  master stay the same, so the cached prefix is reused; a measured repair cost
+  about $0.05 and changed only the two failing bullets out of 18.
+- If the repair also fails, the **better attempt** is returned (a rendered
+  document over an unrendered one, then fewer failures; a tie goes to the
+  repair) with the list of what still fails. Nothing is hidden.
+- **Flags** (a changed unit word after a number) are shown for review and
+  never trigger a repair.
 
 ## Development
 

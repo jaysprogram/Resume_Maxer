@@ -37,6 +37,19 @@ class ResumeDoc(StrictModel):
     experience: list[DocEntry] = []
     projects: list[DocEntry] = []
 
+    def keyed_bullets(self) -> list[tuple[str, DocEntry, DocBullet]]:
+        """Every bullet with the key that labels its width in the compile log."""
+        return [
+            (bullet_key(entry.entry_id, i), entry, bullet)
+            for entry in self.experience + self.projects
+            for i, bullet in enumerate(entry.bullets, start=1)
+        ]
+
+
+def bullet_key(entry_id: str, position: int) -> str:
+    """A bullet's name in the compile log and in failures: NEE's second bullet is NEE.2."""
+    return f"{entry_id}.{position}"
+
 
 def problems(doc: ResumeDoc, master: Master) -> list[str]:
     """Everything in `doc` that its master data does not back. Empty means usable.

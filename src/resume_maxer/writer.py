@@ -86,6 +86,41 @@ USER_TEMPLATE = """\
 
 Write the resume document for this job."""
 
+REPAIR_TEMPLATE = """\
+<job_description>
+{job_description}
+</job_description>
+
+Your previous resume document for this job failed these checks:
+<failures>
+{failures}
+</failures>
+
+<previous_document>
+{previous}
+</previous_document>
+
+Return the corrected resume document. Fix every failure listed. Keep everything \
+else as it was unless a fix requires changing it, and follow all the rules."""
+
+
+@dataclass(frozen=True)
+class Repair:
+    """A failed attempt to fix: the document and what the checks said about it."""
+
+    previous: ResumeDoc
+    failures: list[str]
+
+
+def user_message(job_description: str, repair: Repair | None = None) -> str:
+    if repair is None:
+        return USER_TEMPLATE.format(job_description=job_description)
+    return REPAIR_TEMPLATE.format(
+        job_description=job_description,
+        failures="\n".join(f"- {f}" for f in repair.failures),
+        previous=repair.previous.model_dump_json(indent=1),
+    )
+
 
 @dataclass(frozen=True)
 class Price:
@@ -144,6 +179,7 @@ def write_resume_api(
     effort: str = EFFORT,
     client: anthropic.Anthropic | None = None,
     max_tokens: int = 20_000,
+    repair: Repair | None = None,
 ) -> WriterResult:
     """Ask `model` for a ResumeDoc through the API (needs an API key).
 
@@ -161,9 +197,7 @@ def write_resume_api(
                 "cache_control": {"type": "ephemeral"},
             },
         ],
-        messages=[
-            {"role": "user", "content": USER_TEMPLATE.format(job_description=job_description)}
-        ],
+        messages=[{"role": "user", "content": user_message(job_description, repair)}],
         thinking={"type": "adaptive"},
         output_config={"effort": effort},
         output_format=ResumeDoc,
@@ -205,6 +239,7 @@ def write_resume_claude_code(
     model: str = MODEL,
     effort: str = EFFORT,
     timeout_s: float = CLAUDE_TIMEOUT_S,
+    repair: Repair | None = None,
 ) -> WriterResult:
     """Ask `model` for a ResumeDoc through Claude Code, on its logged-in subscription.
 
@@ -234,7 +269,7 @@ def write_resume_claude_code(
         try:
             proc = subprocess.run(
                 cmd,
-                input=USER_TEMPLATE.format(job_description=job_description),
+                input=user_message(job_description, repair),
                 cwd=tmp,
                 capture_output=True,
                 text=True,

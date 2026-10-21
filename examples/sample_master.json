@@ -148,6 +148,8 @@
     {"name": "Go", "category": "Languages", "status": "CURRENT", "aliases": ["Golang"], "evidence": ["WTHR-1"]},
     {"name": "PostgreSQL", "category": "Databases", "status": "CURRENT", "aliases": ["Postgres"], "evidence": ["WTHR-2"]},
     {"name": "Kubernetes", "category": "Cloud", "status": "CURRENT", "aliases": ["k8s"], "evidence": []},
+    {"name": "SQL", "category": "Languages", "status": "CURRENT", "evidence": ["WTHR-2"]},
+    {"name": "CI/CD", "category": "Cloud", "status": "CURRENT", "aliases": ["continuous integration"], "evidence": ["ACME-2"]},
     {"name": "Rust", "category": "Languages", "status": "UNVERIFIED"}
   ]
 }

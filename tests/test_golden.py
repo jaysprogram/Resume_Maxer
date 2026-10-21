@@ -13,9 +13,9 @@ import pytest
 from resume_maxer.checks import overflowing, pdf_text
 from resume_maxer.compile import compile_tex
 from resume_maxer.load import load_master
-from resume_maxer.numbers import check_numbers
 from resume_maxer.render import render
 from resume_maxer.resume_doc import ResumeDoc
+from resume_maxer.review import check_document
 
 DATA = Path("data")
 MASTER = DATA / "master.json"
@@ -48,17 +48,9 @@ def compiled(golden, tectonic):
     return result
 
 
-def test_every_golden_number_is_backed_by_its_metrics(golden):
+def test_golden_document_passes_structure_and_number_checks(golden):
     master, doc = golden
-    tech = master.tech_names()
-    bullets = {b.id: b for e in master.entries for b in e.bullets}
-    failures = []
-    for entry in doc.experience + doc.projects:
-        for bullet in entry.bullets:
-            metric_ids = {m for s in bullet.source_ids for m in bullets[s].metrics}
-            texts = [master.metrics[m].text for m in metric_ids]
-            failures += check_numbers(bullet.text, texts, tech).failures
-    assert failures == []
+    assert check_document(doc, master).failures == []
 
 
 def test_one_page_no_missing_glyphs(compiled):
