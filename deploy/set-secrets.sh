@@ -24,8 +24,15 @@ if [[ -n $api_key ]]; then
   [[ $api_key == sk-ant-* ]] || { echo "that does not look like an Anthropic API key" >&2; exit 1; }
   backend=api key_name=ANTHROPIC_API_KEY key=$api_key
 else
-  read -rsp "Claude subscription token (from \`claude setup-token\`): " token; echo
-  [[ $token == sk-ant-* ]] || { echo "that does not look like a setup-token token" >&2; exit 1; }
+  # Either paste a token, or give the path of an env file on this server that
+  # already holds one (another service's), so it is copied here without
+  # passing through a clipboard. A setup-token token never rotates, so services
+  # can share one safely.
+  read -rsp "Claude subscription token, or a path to an env file holding CLAUDE_CODE_OAUTH_TOKEN: " token; echo
+  if [[ -f $token ]]; then
+    token=$(sed -n "s/^CLAUDE_CODE_OAUTH_TOKEN=//p" "$token" | tail -1 | tr -d "\"'")
+  fi
+  [[ $token == sk-ant-* ]] || { echo "no setup-token token found" >&2; exit 1; }
   backend=claude-code key_name=CLAUDE_CODE_OAUTH_TOKEN key=$token
 fi
 
