@@ -2,7 +2,7 @@
 
 import pytest
 
-from resume_maxer.checks import overflowing, pdf_text
+from resume_maxer.checks import UNDERFILL_LINES, empty_lines, overflowing, pdf_text
 from resume_maxer.compile import CompileError, compile_tex, find_tectonic
 from resume_maxer.render import render
 from resume_maxer.resume_doc import ResumeDoc
@@ -25,6 +25,9 @@ def test_sample_compiles_to_one_clean_page(tectonic, sample_data, sample_doc_dat
     keys = ["skills.1", "skills.2", "ACME.1", "ACME.2", "NWL.1", "WTHR.1", "WTHR.2"]
     assert [w.key for w in result.widths] == keys
     assert overflowing(result.widths) == []
+    # The fill is read from the last line of text; the short sample leaves room.
+    assert result.page_pt and 0 < result.used_pt < result.page_pt
+    assert empty_lines(result) > UNDERFILL_LINES
 
 
 def test_overlong_skills_line_is_measured_as_overflowing(tectonic, sample_data, sample_doc_data):

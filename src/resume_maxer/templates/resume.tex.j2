@@ -46,18 +46,24 @@
 % one-line rule is checked against the real typeset width:
 %   LINEWIDTH <key> <text width> <available width>
 \newlength{\linemeasure}
+% After each line, log how far down the page the text has reached. The last
+% such line marks where the text ends, so code can tell an under-filled page.
+% (Measured here, not at \end{document}: trailing spacing after the last entry
+% counts toward \pagetotal there but is never printed.)
+%   PAGEFILL <height used> <page height>
+\newcommand{\logpagefill}{\typeout{PAGEFILL \the\pagetotal\space\the\pagegoal}}
 % Fixed-width label box keeps every \cdot and every bullet body aligned.
 \newcommand{\resumeBullet}[2]{%
   {\fontsize{9.0}{11.3}\selectfont\noindent
   \settowidth{\linemeasure}{#2}%
   \typeout{LINEWIDTH #1 \the\linemeasure\space\the\dimexpr\linewidth-0.16in\relax}%
-  \makebox[0.16in][l]{\(\cdot\)}#2\par}\vspace{1.3pt}
+  \makebox[0.16in][l]{\(\cdot\)}#2\par\logpagefill}\vspace{1.3pt}
 }
 \newcommand{\skillline}[3]{%
   {\fontsize{9.05}{11.2}\selectfont
   \settowidth{\linemeasure}{\textbf{#2:} #3}%
   \typeout{LINEWIDTH #1 \the\linemeasure\space\the\linewidth}%
-  \textbf{#2:} #3\par}\vspace{0.6pt}
+  \textbf{#2:} #3\par\logpagefill}\vspace{0.6pt}
 }
 
 \begin{document}

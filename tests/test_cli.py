@@ -8,6 +8,7 @@ import pytest
 from anthropic.types import Usage
 
 from resume_maxer import cli
+from resume_maxer.judge import JUDGES, Verdict
 from resume_maxer.pipeline import Attempt, Tailored, TailorError
 from resume_maxer.resume_doc import ResumeDoc
 from resume_maxer.writer import BACKENDS, WriterResult
@@ -32,7 +33,7 @@ def tailored(doc_data, failures=(), flags=(), costs=(0.15,), pdf=b"%PDF-fake"):
     attempts = [
         Attempt(
             WriterResult(
-                doc=None,
+                parsed=None,
                 stop_reason="completed",
                 usage=Usage(input_tokens=0, output_tokens=0),
                 cost_usd=cost,
@@ -57,8 +58,8 @@ def fake_tailor(monkeypatch):
     calls = []
 
     def install(result=None, error=None):
-        def fake(master, master_json, job, *, write):
-            calls.append({"job": job, "write": write, "master": master})
+        def fake(master, master_json, job, *, write, judge):
+            calls.append({"job": job, "write": write, "judge": judge, "master": master})
             if error:
                 raise error
             return result
@@ -191,3 +192,33 @@ def test_api_backend_does_not_need_claude_code(
     calls = fake_tailor(tailored(sample_doc_data))
     assert cli.main(["tailor", "acme_job.txt", "--backend", "api"]) == cli.EXIT_PASSED
     assert len(calls) == 1
+
+
+def test_shortfall_is_shown_but_still_passes(workspace, fake_tailor, sample_doc_data, capsys):
+    result = tailored(sample_doc_data)
+    result = Tailored(**{**result.__dict__, "shortfalls": ["the page has about 4 empty lines"]})
+    fake_tailor(result)
+    assert cli.main(["tailor", "acme_job.txt"]) == cli.EXIT_PASSED
+    out = capsys.readouterr().out
+    assert "PASS" in out and "Room to improve:\n  - the page has about 4 empty lines" in out
+
+
+def test_judge_advice_is_printed_after_the_checks_and_never_changes_the_exit(
+    workspace, fake_tailor, sample_doc_data, capsys
+):
+    result = tailored(sample_doc_data, failures=["ACME.1 uses 104%"])
+    verdict = Verdict(score=81, summary="Solid fit.", gaps=["No Go shown", "Testing buried"])
+    calls = fake_tailor(Tailored(**{**result.__dict__, "verdict": verdict}))
+    assert cli.main(["tailor", "acme_job.txt"]) == cli.EXIT_FAILURES  # set by the checks only
+    out = capsys.readouterr().out
+    assert out.index("FAIL") < out.index("Judge (advice only): 81/100. Solid fit.")
+    assert "  - No Go shown\n  - Testing buried" in out
+    assert calls[0]["judge"] is JUDGES["claude-code"]  # same route as the writer
+
+
+def test_judge_trouble_is_a_note_not_an_error(workspace, fake_tailor, sample_doc_data, capsys):
+    result = tailored(sample_doc_data)
+    note = "judge unavailable: Claude Code did not answer within 1200s."
+    fake_tailor(Tailored(**{**result.__dict__, "judge_note": note}))
+    assert cli.main(["tailor", "acme_job.txt"]) == cli.EXIT_PASSED
+    assert f"Judge: {note}" in capsys.readouterr().out

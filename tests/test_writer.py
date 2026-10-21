@@ -9,17 +9,14 @@ from types import SimpleNamespace
 import pytest
 from anthropic.types import Usage
 
-from resume_maxer import writer
+from resume_maxer import claude
+from resume_maxer.claude import PRICES, ClaudeError, cost_usd, find_claude
 from resume_maxer.resume_doc import ResumeDoc
 from resume_maxer.writer import (
     EFFORT,
     MODEL,
-    PRICES,
     SYSTEM,
     Repair,
-    WriterError,
-    cost_usd,
-    find_claude,
     user_message,
     write_resume_api,
     write_resume_claude_code,
@@ -81,14 +78,14 @@ def test_request_uses_chosen_model_and_keeps_the_posting_out_of_the_instructions
 
 def test_completed_answer_returns_the_document(doc):
     result = write_resume_api(MASTER_TEXT, JD, client=fake_client("end_turn", doc))
-    assert result.doc == doc
+    assert result.parsed == doc
     assert result.request_id == "req_fake"
 
 
 def test_truncated_answer_returns_no_document(doc):
     # A response cut off at max_tokens may still parse; it must not be used.
     result = write_resume_api(MASTER_TEXT, JD, client=fake_client("max_tokens", doc))
-    assert result.doc is None
+    assert result.parsed is None
     assert result.stop_reason == "max_tokens"
 
 
@@ -148,10 +145,10 @@ def claude_reply(structured_output, **extra):
 
 @pytest.fixture
 def run_claude(monkeypatch):
-    monkeypatch.setenv(writer.CLAUDE_ENV, sys.executable)  # any real file will do
+    monkeypatch.setenv(claude.CLAUDE_ENV, sys.executable)  # any real file will do
 
     def install(fake):
-        monkeypatch.setattr(writer.subprocess, "run", fake)
+        monkeypatch.setattr(claude.subprocess, "run", fake)
         return fake
 
     return install
@@ -163,7 +160,7 @@ def test_claude_code_call_has_no_tools_and_keeps_the_posting_off_the_command_lin
     fake = run_claude(FakeClaude(claude_reply(sample_doc_data)))
     result = write_resume_claude_code(MASTER_TEXT, JD)
 
-    assert result.doc == ResumeDoc.model_validate(sample_doc_data)
+    assert result.parsed == ResumeDoc.model_validate(sample_doc_data)
     assert result.cost_usd == 0.0823 and result.usage.cache_read_input_tokens == 24_559
     cmd = fake.cmd
     assert isinstance(cmd, list)  # an argument list, never a shell string
@@ -182,7 +179,7 @@ def test_claude_code_call_has_no_tools_and_keeps_the_posting_off_the_command_lin
 def test_claude_code_error_result_returns_no_document(run_claude):
     run_claude(FakeClaude(claude_reply(None, is_error=True, subtype="error_max_turns")))
     result = write_resume_claude_code(MASTER_TEXT, JD)
-    assert result.doc is None
+    assert result.parsed is None
     assert "error_max_turns" in result.detail
 
 
@@ -190,26 +187,26 @@ def test_claude_code_answer_that_is_not_a_resume_returns_no_document(run_claude)
     # Model output is untrusted: an answer missing its fields is rejected, not used.
     run_claude(FakeClaude(claude_reply({"skills": "everything"})))
     result = write_resume_claude_code(MASTER_TEXT, JD)
-    assert result.doc is None
+    assert result.parsed is None
     assert "not a valid resume document" in result.detail
 
 
 def test_claude_code_failure_surfaces_its_message(run_claude):
     run_claude(FakeClaude(stdout="", stderr="Not logged in. Run claude to log in.", returncode=1))
-    with pytest.raises(WriterError, match="exited 1 without a result:\nNot logged in"):
+    with pytest.raises(ClaudeError, match="exited 1 without a result:\nNot logged in"):
         write_resume_claude_code(MASTER_TEXT, JD)
 
 
 def test_missing_claude_code_says_how_to_fix_it(monkeypatch):
-    monkeypatch.delenv(writer.CLAUDE_ENV, raising=False)
-    monkeypatch.setattr(writer.shutil, "which", lambda name: None)
-    with pytest.raises(WriterError, match="Claude Code not found.*CLAUDE_CODE"):
+    monkeypatch.delenv(claude.CLAUDE_ENV, raising=False)
+    monkeypatch.setattr(claude.shutil, "which", lambda name: None)
+    with pytest.raises(ClaudeError, match="Claude Code not found.*CLAUDE_CODE"):
         find_claude()
 
 
 def test_claude_code_env_pointing_nowhere_is_reported(monkeypatch, tmp_path):
-    monkeypatch.setenv(writer.CLAUDE_ENV, str(tmp_path / "nope.exe"))
-    with pytest.raises(WriterError, match="does not exist"):
+    monkeypatch.setenv(claude.CLAUDE_ENV, str(tmp_path / "nope.exe"))
+    with pytest.raises(ClaudeError, match="does not exist"):
         find_claude()
 
 

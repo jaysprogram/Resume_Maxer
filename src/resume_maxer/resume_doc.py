@@ -47,7 +47,7 @@ class ResumeDoc(StrictModel):
 
 
 def bullet_key(entry_id: str, position: int) -> str:
-    """A bullet's name in the compile log and in failures: NEE's second bullet is NEE.2."""
+    """A bullet's name in the compile log and in failures: ACME's second bullet is ACME.2."""
     return f"{entry_id}.{position}"
 
 

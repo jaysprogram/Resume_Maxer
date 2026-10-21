@@ -18,6 +18,7 @@ DEFAULT_TIMEOUT_S = 180
 _WIDTH = re.compile(r"^LINEWIDTH (\S+) ([\d.]+)pt ([\d.]+)pt$", re.MULTILINE)
 # Only the character and its code point: TeX wraps log lines at 79 columns,
 # which cuts the font name that follows mid-word.
+_FILL = re.compile(r"^PAGEFILL ([\d.]+)pt ([\d.]+)pt$", re.MULTILINE)
 _MISSING = re.compile(r"^Missing character: There is no (.+?) in font", re.MULTILINE)
 
 
@@ -27,7 +28,7 @@ class CompileError(RuntimeError):
 
 @dataclass(frozen=True)
 class LineWidth:
-    key: str  # a bullet's entry ID and position ("NEE.2"), or a skills line ("skills.1")
+    key: str  # a bullet's entry ID and position ("ACME.2"), or a skills line ("skills.1")
     width_pt: float  # typeset width of the line's text
     available_pt: float  # width the text may use (a bullet's excludes its marker box)
 
@@ -43,6 +44,10 @@ class CompileResult:
     widths: list[LineWidth]
     missing_glyphs: list[str]
     log: str
+    # Height the last page's content used, and the height available; None when
+    # the log has no PAGEFILL line.
+    used_pt: float | None = None
+    page_pt: float | None = None
 
 
 def find_tectonic() -> str:
@@ -94,4 +99,15 @@ def compile_tex(tex: str, timeout_s: float = DEFAULT_TIMEOUT_S) -> CompileResult
     widths = [LineWidth(k, float(w), float(a)) for k, w, a in _WIDTH.findall(log)]
     missing = sorted(set(_MISSING.findall(log)))
     pages = len(PdfReader(BytesIO(pdf)).pages)
-    return CompileResult(pdf=pdf, pages=pages, widths=widths, missing_glyphs=missing, log=log)
+    # The last PAGEFILL line is logged right after the last line of text.
+    fills = _FILL.findall(log)
+    used, page = (float(fills[-1][0]), float(fills[-1][1])) if fills else (None, None)
+    return CompileResult(
+        pdf=pdf,
+        pages=pages,
+        widths=widths,
+        missing_glyphs=missing,
+        log=log,
+        used_pt=used,
+        page_pt=page,
+    )

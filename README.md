@@ -95,9 +95,15 @@ Every number in a generated bullet must appear in the metrics that bullet cites.
 - **What must match (fails the bullet):** the value, the estimate markers `~`
   and `+`, and the symbols `$`, `%`, `K`. *approximately* and *about* count as
   `~`. So `1,000` fails against `~1,000`, and `$20K` fails against `~20K tokens`.
-- **What is only flagged:** a unit word after the number that the metrics never
-  use (`~20K dollars`). Rewording "attendees" as "students" is the writer's job,
-  so this is shown for review rather than blocking.
+- **What is only flagged:** a unit after the number that the metrics never use
+  (`~20K dollars`). Rewording "attendees" as "students" is the writer's job, so
+  this is shown for review rather than blocking. The unit is the run of lowercase
+  words after the number: names and acronyms in between are skipped (`~20 Example Club
+  attendees`), a joining word ends it (`500+ GitHub repos through`), and it
+  matches if any of its words is a metric's unit, so describing words are fine
+  (`~6 overnight survey flights`). Abbreviations and plurals are the same
+  unit (`5+ min` for `5+ minutes`). Before this rule, three false flags showed
+  on nearly every real resume; after it, none across 12.
 - Known false alarm: "learned about 3 tools" reads *about* as an estimate marker.
 
 ## Rendering and compiling
@@ -128,8 +134,9 @@ checksum-verified release.
 
 ## The writer
 
-`writer.write_resume` asks Claude for a resume document in one call, using
-structured outputs so the answer is parsed straight into `ResumeDoc`.
+The writer asks Claude for a resume document in one call, using structured
+outputs so the answer is validated straight into `ResumeDoc`. How the question
+reaches Claude lives in `claude.py`, shared with the judge.
 
 - **Model:** Claude Sonnet 5.5 at `high` effort (`writer.MODEL`, `writer.EFFORT`).
   In a side-by-side run on one posting, Haiku 5.5 and Sonnet 5.5 at medium and
@@ -166,17 +173,38 @@ count, every line's width, and missing glyphs.
   invented skill, or an `UNVERIFIED` one fails.
 
 - Each **failure** says what is wrong and what to do, precisely enough for a
-  model to act on: `PINE.1 uses 133% of the line (at most 99% fits): cut at
+  model to act on: `ACME.1 uses 133% of the line (at most 99% fits): cut at
   least 48 characters from '...'`.
 - Any failure gets **one repair**: the writer receives the failed document
   and its failures, and is asked to fix only those. The instructions and
   master stay the same, so the cached prefix is reused; a measured repair cost
   about $0.05 and changed only the two failing bullets out of 18.
+- An **under-filled page** is a *shortfall*: 3 or more bullet lines of empty
+  space below the text (`checks.UNDERFILL_LINES`; the preferred resume leaves
+  about 1.6). The template logs how far down the page the text reaches after
+  every line (`PAGEFILL`). A shortfall triggers the repair ("add a relevant
+  bullet") but never fails the resume, and counts less than any failure.
 - If the repair also fails, the **better attempt** is returned (a rendered
-  document over an unrendered one, then fewer failures; a tie goes to the
-  repair) with the list of what still fails. Nothing is hidden.
-- **Flags** (a changed unit word after a number) are shown for review and
-  never trigger a repair.
+  document over an unrendered one, then fewer failures, then fewer shortfalls,
+  so an under-filled one-page draft beats a repair that spilled onto two pages;
+  a tie goes to the repair) with the list of what still fails. Nothing is hidden.
+- **Flags** (a changed unit after a number) are shown for review and never
+  trigger a repair.
+
+## The judge (advice only)
+
+After the loop, `judge.py` asks Claude Haiku 5.5 to score the final page
+against the posting, from 0 to 100 on a fixed rubric, with up to five gaps. It
+reads the text an ATS extracts from the PDF. It costs about $0.001.
+
+The score is reported, never used as a gate. A calibration run scored 11
+resume and posting pairs twice each: a resume tailored for the posting scored
+about the same as an untailored one (on one posting, a resume tailored for a
+*different* job scored highest), and the same page moved up to 11 points
+between runs. What the score tracks is the candidate's fit for the posting,
+which rewording cannot change. The gaps are useful as advice: some point to
+buried evidence, others to experience the master does not have, which only
+real work, recorded in the master, can address.
 
 ## Development
 

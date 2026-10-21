@@ -7,9 +7,9 @@ repair request and, if the repair also fails, to the person.
 """
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-from resume_maxer.checks import FIT_RATIO, overflowing
+from resume_maxer.checks import FIT_RATIO, UNDERFILL_LINES, empty_lines, overflowing
 from resume_maxer.compile import CompileResult, LineWidth
 from resume_maxer.numbers import check_numbers
 from resume_maxer.resume_doc import ResumeDoc, problems
@@ -21,6 +21,9 @@ from resume_maxer.skills import unbacked_parts, vocabulary
 class Review:
     failures: list[str]  # must be fixed: each one fails the resume
     flags: list[str]  # shown for review, never retried
+    # Worth one repair, but never fail the resume, and outweighed by any failure:
+    # an under-filled page beats one that a repair pushed onto two pages.
+    shortfalls: list[str] = field(default_factory=list)
 
     @property
     def passed(self) -> bool:
@@ -74,8 +77,14 @@ def _overflow_message(width: LineWidth, doc: ResumeDoc) -> str:
 def review(doc: ResumeDoc, master: Master, compiled: CompileResult | None) -> Review:
     """The full verdict. `compiled` is None when the document could not be rendered."""
     found = check_document(doc, master)
-    failures = list(found.failures)
+    failures, shortfalls = list(found.failures), []
     if compiled is not None:
+        empty = empty_lines(compiled)
+        if empty is not None and empty >= UNDERFILL_LINES:
+            shortfalls.append(
+                f"the page has about {empty:.0f} empty lines at the bottom: add one or two "
+                "relevant bullets, or a short entry, keeping every line to one line"
+            )
         if compiled.pages != 1:
             failures.append(
                 f"the resume is {compiled.pages} pages; it must be 1: drop the least "
@@ -86,4 +95,4 @@ def review(doc: ResumeDoc, master: Master, compiled: CompileResult | None) -> Re
             f"the font has no glyph for {g}; replace that character"
             for g in compiled.missing_glyphs
         ]
-    return Review(failures, found.flags)
+    return Review(failures, found.flags, shortfalls)

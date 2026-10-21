@@ -86,3 +86,32 @@ def test_unrenderable_document_still_gets_its_structure_failures(master, sample_
 )
 def test_chars_to_cut(ratio, expected):
     assert chars_to_cut("x" * 100, ratio) == expected
+
+
+# --- under-filled page: a shortfall, never a failure ----------------------------
+
+
+def filled(empty_lines, pages=1) -> CompileResult:
+    result = compiled(pages=pages)
+    page = 731.4
+    return CompileResult(
+        **{**result.__dict__, "used_pt": page - empty_lines * 12.6, "page_pt": page}
+    )
+
+
+@pytest.mark.parametrize("lines", [3.0, 6.5])
+def test_under_filled_page_is_a_shortfall_not_a_failure(master, sample_doc_data, lines):
+    result = review(ResumeDoc.model_validate(sample_doc_data), master, filled(lines))
+    assert result.passed  # a shortfall never fails the resume
+    [shortfall] = result.shortfalls
+    assert shortfall.startswith(f"the page has about {lines:.0f} empty lines at the bottom")
+
+
+@pytest.mark.parametrize("lines", [0.6, 1.6, 2.9])  # 1.6 is the preferred resume's gap
+def test_well_filled_page_has_no_shortfall(master, sample_doc_data, lines):
+    assert review(ResumeDoc.model_validate(sample_doc_data), master, filled(lines)).shortfalls == []
+
+
+def test_fill_is_not_judged_on_a_two_page_resume(master, sample_doc_data):
+    result = review(ResumeDoc.model_validate(sample_doc_data), master, filled(10, pages=2))
+    assert result.shortfalls == [] and "2 pages" in result.failures[0]

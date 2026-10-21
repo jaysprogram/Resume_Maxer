@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from resume_maxer.checks import overflowing, pdf_text
+from resume_maxer.checks import UNDERFILL_LINES, empty_lines, overflowing, pdf_text
 from resume_maxer.compile import compile_tex
 from resume_maxer.load import load_master
 from resume_maxer.render import render
@@ -56,6 +56,11 @@ def test_golden_document_passes_structure_and_number_checks(golden):
 def test_one_page_no_missing_glyphs(compiled):
     assert compiled.pages == 1
     assert compiled.missing_glyphs == []
+
+
+def test_preferred_resume_is_not_under_filled(compiled):
+    # The reference for "full": its gap sets how much empty space is normal.
+    assert empty_lines(compiled) < UNDERFILL_LINES
 
 
 def test_every_bullet_and_skills_line_fits_one_line(golden, compiled):

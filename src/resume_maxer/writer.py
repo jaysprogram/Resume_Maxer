@@ -5,17 +5,11 @@ The model only chooses and words. Every rule it is told here is also enforced by
 that ignores the prompt is caught, never trusted.
 """
 
-import json
-import os
-import shutil
-import subprocess
-import tempfile
 from dataclasses import dataclass
-from pathlib import Path
 
 import anthropic
-from pydantic import ValidationError
 
+from resume_maxer.claude import Answer, ask_api, ask_claude_code
 from resume_maxer.resume_doc import ResumeDoc
 
 # Chosen from a side-by-side run (Oct 2026): every model and effort passed the code
@@ -122,53 +116,12 @@ def user_message(job_description: str, repair: Repair | None = None) -> str:
     )
 
 
-@dataclass(frozen=True)
-class Price:
-    """USD per million tokens."""
-
-    input: float
-    output: float
-    cache_write: float
-    cache_read: float
-
-
-# Claude API list prices (5-minute cache: writes 1.25x input, reads 0.1x input).
-PRICES = {
-    "claude-haiku-5-5": Price(input=0.10, output=0.50, cache_write=0.125, cache_read=0.01),
-    "claude-sonnet-5-5": Price(input=2.00, output=10.00, cache_write=2.50, cache_read=0.20),
-}
-
-
-def cost_usd(model: str, usage: anthropic.types.Usage) -> float:
-    price = PRICES[model]
-    return (
-        usage.input_tokens * price.input
-        + usage.output_tokens * price.output
-        + (usage.cache_creation_input_tokens or 0) * price.cache_write
-        + (usage.cache_read_input_tokens or 0) * price.cache_read
-    ) / 1_000_000
-
-
-@dataclass(frozen=True)
-class WriterResult:
-    doc: ResumeDoc | None  # None when the model stopped early, refused, or answered badly
-    stop_reason: str | None
-    usage: anthropic.types.Usage
-    cost_usd: float  # list price; a subscription run is not billed per token
-    request_id: str | None
-    detail: str | None = None  # why there is no document, when there is none
-
-
-class WriterError(RuntimeError):
-    """The writer could not be reached, or failed before giving any answer."""
+# A writer answer: a ResumeDoc, or None with why.
+WriterResult = Answer[ResumeDoc]
 
 
 def _master_block(master_json: str) -> str:
     return f"<master_data>\n{master_json}\n</master_data>"
-
-
-def _tail(text: str, lines: int = 15) -> str:
-    return "\n".join(text.strip().splitlines()[-lines:])
 
 
 def write_resume_api(
@@ -178,57 +131,17 @@ def write_resume_api(
     model: str = MODEL,
     effort: str = EFFORT,
     client: anthropic.Anthropic | None = None,
-    max_tokens: int = 20_000,
     repair: Repair | None = None,
 ) -> WriterResult:
-    """Ask `model` for a ResumeDoc through the API (needs an API key).
-
-    The master text goes in the cached system prefix.
-    """
-    client = client or anthropic.Anthropic()
-    response = client.messages.parse(
+    """Ask for a ResumeDoc through the API (needs an API key); the master is cached."""
+    return ask_api(
+        system=SYSTEM,
+        context=_master_block(master_json),
+        user=user_message(job_description, repair),
+        output=ResumeDoc,
         model=model,
-        max_tokens=max_tokens,
-        system=[
-            {"type": "text", "text": SYSTEM},
-            {
-                "type": "text",
-                "text": _master_block(master_json),
-                "cache_control": {"type": "ephemeral"},
-            },
-        ],
-        messages=[{"role": "user", "content": user_message(job_description, repair)}],
-        thinking={"type": "adaptive"},
-        output_config={"effort": effort},
-        output_format=ResumeDoc,
-    )
-    complete = response.stop_reason == "end_turn"
-    return WriterResult(
-        doc=response.parsed_output if complete else None,
-        stop_reason=response.stop_reason,
-        usage=response.usage,
-        cost_usd=cost_usd(model, response.usage),
-        request_id=response._request_id,
-        detail=None if complete else f"the model stopped early ({response.stop_reason})",
-    )
-
-
-CLAUDE_ENV = "CLAUDE_CODE"  # full path to the claude executable, when not on PATH
-CLAUDE_TIMEOUT_S = 1200
-
-
-def find_claude() -> str:
-    configured = os.environ.get(CLAUDE_ENV)
-    if configured:
-        if not Path(configured).is_file():
-            raise WriterError(f"{CLAUDE_ENV} is set to {configured!r}, which does not exist.")
-        return configured
-    found = shutil.which("claude")
-    if found:
-        return found
-    raise WriterError(
-        "Claude Code not found. Install it (https://claude.com/claude-code), run `claude` "
-        f"once to log in, or set {CLAUDE_ENV} to the executable's full path."
+        effort=effort,
+        client=client,
     )
 
 
@@ -238,77 +151,18 @@ def write_resume_claude_code(
     *,
     model: str = MODEL,
     effort: str = EFFORT,
-    timeout_s: float = CLAUDE_TIMEOUT_S,
     repair: Repair | None = None,
 ) -> WriterResult:
-    """Ask `model` for a ResumeDoc through Claude Code, on its logged-in subscription.
-
-    Same instructions as write_resume_api; Claude Code supplies the call.
-    """
-    exe = find_claude()
-    schema = json.dumps(anthropic.transform_schema(ResumeDoc.model_json_schema()))
-    with tempfile.TemporaryDirectory(prefix="resume-maxer-writer-") as tmp:
-        system_file = Path(tmp) / "system.txt"
-        system_file.write_text(f"{SYSTEM}\n{_master_block(master_json)}\n", encoding="utf-8")
-        # Argument list, never a shell string. --tools "" leaves the model no tools,
-        # so text planted in a job description cannot make it run commands or read
-        # files. The empty temp folder as the working directory keeps any CLAUDE.md
-        # or memory out of the prompt. The job description goes in on stdin.
-        cmd = [
-            exe,
-            "-p",
-            "--model", model,
-            "--effort", effort,
-            "--tools", "",
-            "--system-prompt-file", str(system_file),
-            "--json-schema", schema,
-            "--output-format", "json",
-            "--no-session-persistence",
-            "--strict-mcp-config",
-        ]  # fmt: skip
-        try:
-            proc = subprocess.run(
-                cmd,
-                input=user_message(job_description, repair),
-                cwd=tmp,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=timeout_s,
-            )
-        except subprocess.TimeoutExpired:
-            raise WriterError(f"Claude Code did not answer within {timeout_s}s.") from None
-
-    try:
-        out = json.loads(proc.stdout)
-    except json.JSONDecodeError:
-        raise WriterError(
-            f"Claude Code exited {proc.returncode} without a result:\n"
-            + _tail(proc.stderr or proc.stdout)
-        ) from None
-
-    u = out.get("usage") or {}
-    result = {
-        "stop_reason": out.get("terminal_reason") or out.get("subtype"),
-        "usage": anthropic.types.Usage(
-            input_tokens=u.get("input_tokens", 0),
-            output_tokens=u.get("output_tokens", 0),
-            cache_creation_input_tokens=u.get("cache_creation_input_tokens", 0),
-            cache_read_input_tokens=u.get("cache_read_input_tokens", 0),
-        ),
-        # Claude Code's own list-price figure; its cache writes use the 1-hour rate.
-        "cost_usd": float(out.get("total_cost_usd") or 0.0),
-        "request_id": out.get("session_id"),
-    }
-    if out.get("is_error"):
-        detail = f"Claude Code reported {out.get('subtype')}: {str(out.get('result'))[:500]}"
-        return WriterResult(doc=None, detail=detail, **result)
-    try:
-        doc = ResumeDoc.model_validate(out.get("structured_output"))
-    except ValidationError as exc:
-        return WriterResult(doc=None, detail=f"not a valid resume document: {exc}", **result)
-    return WriterResult(doc=doc, **result)
+    """Ask for a ResumeDoc through Claude Code, on its logged-in subscription."""
+    return ask_claude_code(
+        system=SYSTEM,
+        context=_master_block(master_json),
+        user=user_message(job_description, repair),
+        output=ResumeDoc,
+        model=model,
+        effort=effort,
+        what="resume document",
+    )
 
 
 # Local runs use the owner's Claude subscription through Claude Code; a server

@@ -14,12 +14,14 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from resume_maxer.claude import ClaudeError, find_claude
 from resume_maxer.compile import CompileError, find_tectonic
+from resume_maxer.judge import JUDGES
 from resume_maxer.load import MASTER_FILENAME, MasterDataError, data_dir, load_master
-from resume_maxer.pipeline import TailorError, check, tailor
+from resume_maxer.pipeline import Tailored, TailorError, check, tailor
 from resume_maxer.resume_doc import ResumeDoc
 from resume_maxer.review import Review
-from resume_maxer.writer import BACKEND, BACKENDS, WriterError, find_claude
+from resume_maxer.writer import BACKEND, BACKENDS
 
 OUT_DIR = Path("out")
 EXIT_PASSED, EXIT_FAILURES, EXIT_ERROR = 0, 1, 2
@@ -61,6 +63,10 @@ def _report(pdf_path: Path, pdf: bytes | None, review: Review, summary: str) -> 
             print(f"  - {failure}")
         if pdf is None:
             print("  (no PDF: the document could not be rendered)")
+    if review.shortfalls:
+        print("Room to improve:")
+        for shortfall in review.shortfalls:
+            print(f"  - {shortfall}")
     if review.flags:
         print("Flags for review:")
         for flag in review.flags:
@@ -82,6 +88,7 @@ def cmd_tailor(args: argparse.Namespace) -> int:
         master_path.read_text(encoding="utf-8"),
         job,
         write=BACKENDS[args.backend],
+        judge=JUDGES[args.backend],
     )
     pdf_path = args.output or OUT_DIR / f"{stem}.pdf"
     _write_outputs(pdf_path, result.doc, result.pdf)
@@ -89,7 +96,20 @@ def cmd_tailor(args: argparse.Namespace) -> int:
     summary = (
         f"{attempts} attempt{'s' if attempts > 1 else ''}, ${result.cost_usd:.2f} at list price"
     )
-    return _report(pdf_path, result.pdf, Review(result.failures, result.flags), summary)
+    checks = Review(result.failures, result.flags, result.shortfalls)
+    code = _report(pdf_path, result.pdf, checks, summary)
+    _report_judge(result)
+    return code
+
+
+def _report_judge(result: Tailored) -> None:
+    """The judge's advice, after the checks: it never changes the exit code."""
+    if result.verdict:
+        print(f"Judge (advice only): {result.verdict.score}/100. {result.verdict.summary}")
+        for gap in result.verdict.top_gaps():
+            print(f"  - {gap}")
+    elif result.judge_note:
+        print(f"Judge: {result.judge_note}")
 
 
 def cmd_build(args: argparse.Namespace) -> int:
@@ -135,7 +155,7 @@ def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
         return args.run(args)
-    except (UsageError, MasterDataError, WriterError, TailorError, CompileError) as exc:
+    except (UsageError, MasterDataError, ClaudeError, TailorError, CompileError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_ERROR
 

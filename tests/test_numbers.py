@@ -57,9 +57,9 @@ def test_the_word_one_is_not_counted():
     assert keys("a one-time fix that built one page") == []
 
 
-def test_unit_word_is_captured():
-    [n] = extract_numbers("a ~1,000-person team")
-    assert (n.raw, n.unit) == ("~1,000", "person")
+def test_unit_phrase_is_captured():
+    [n] = extract_numbers("a ~1,000-person team in Ohio")
+    assert (n.raw, n.unit) == ("~1,000", "person team")
 
 
 # --- check_numbers: what must match -----------------------------------------
@@ -114,6 +114,45 @@ def test_changed_unit_word_is_flagged_not_failed():
     result = check_numbers("Avoided ~20K dollars per run", METRICS, TECH)
     assert result.ok
     assert result.flags == ["'~20K' is followed by 'dollars', which its metrics never use"]
+
+
+@pytest.mark.parametrize(
+    ("bullet", "metric"),
+    [
+        # Regressions: three flags fired on nearly every real resume.
+        # A name between the number and its unit is skipped to reach the unit.
+        ("averaging ~20 Example Club attendees per session", "~20 attendees per workshop"),
+        # A name followed by a function word means there is no unit to compare.
+        ("indexed 500+ GitHub repos through the app", "500+ repos indexed"),
+        # An abbreviation is the same unit as its full word.
+        ("eliminating 5+ min setup", "5+ minutes of setup removed"),
+        # So is a singular for a plural.
+        ("saving ~12 hour blocks weekly", "~12 hours/week saved"),
+        # Describing words before the unit noun.
+        ("ran ~6 overnight survey flights", "~6 drone survey flights"),
+    ],
+)
+def test_same_unit_in_other_words_is_not_flagged(bullet, metric):
+    result = check_numbers(bullet, [metric])
+    assert result.ok and result.flags == []
+
+
+@pytest.mark.parametrize(
+    ("bullet", "metric", "unit"),
+    [
+        # The other polarity: a real change of unit is still caught, names or not.
+        ("averaging ~20 Example Club drivers per session", "~20 attendees per workshop", "drivers"),
+        ("eliminating 5+ hours of setup", "5+ minutes of setup removed", "hours"),
+        ("ran ~6 overnight survey drills", "~6 drone test flights", "overnight survey drills"),
+    ],
+)
+def test_changed_unit_is_still_flagged(bullet, metric, unit):
+    [flag] = check_numbers(bullet, [metric]).flags
+    assert f"followed by {unit!r}" in flag
+
+
+def test_looking_ahead_for_a_unit_does_not_swallow_a_later_number():
+    assert keys("ran ~6 missions and two drones") == ["~6", "2"]
 
 
 def test_every_failure_is_reported():
