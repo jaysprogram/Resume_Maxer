@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block head %}{% if run.pending %}<meta http-equiv="refresh" content="5">{% endif %}{% endblock %}
+{% block title %}{{ run.label }} · Resume Maxer{% endblock %}
+{% block content %}
+<h1>{{ run.label }}</h1>
+
+{% if run.pending %}
+<p class="state state-{{ run.state }}">{{ "Waiting for the previous run" if run.state == "queued" else "Tailoring" }}…</p>
+<p class="hint">This page refreshes itself. You can leave and come back.</p>
+
+{% elif run.state == "error" %}
+<p class="error" role="alert">The run failed: {{ run.error }}</p>
+
+{% elif run.state == "interrupted" %}
+<p class="error" role="alert">The server restarted during this run. Start it again from the home page.</p>
+
+{% else %}
+<p class="state state-done">{{ "Every check passed" if run.passed else "Some checks still fail" }}{% if run.cost_usd is not none %} · ${{ "%.2f"|format(run.cost_usd) }} at list price{% endif %}</p>
+{% if run.has_pdf %}
+<p><a class="button" href="/runs/{{ run.id }}/resume.pdf">Download PDF</a></p>
+{% else %}
+<p class="error">No PDF: the resume could not be rendered.</p>
+{% endif %}
+
+{% if run.failures %}
+<h2>Still failing</h2>
+<ul>{% for item in run.failures %}<li>{{ item }}</li>{% endfor %}</ul>
+{% endif %}
+{% if run.shortfalls %}
+<h2>Room to improve</h2>
+<ul>{% for item in run.shortfalls %}<li>{{ item }}</li>{% endfor %}</ul>
+{% endif %}
+{% if run.flags %}
+<h2>Flags for review</h2>
+<ul>{% for item in run.flags %}<li>{{ item }}</li>{% endfor %}</ul>
+{% endif %}
+{% if run.verdict %}
+<h2>Judge (advice only): {{ run.verdict.score }}/100</h2>
+<p>{{ run.verdict.summary }}</p>
+<ul>{% for gap in run.verdict.gaps %}<li>{{ gap }}</li>{% endfor %}</ul>
+{% elif run.judge_note %}
+<p class="hint">Judge: {{ run.judge_note }}</p>
+{% endif %}
+{% endif %}
+
+<p><a href="/">← All runs</a></p>
+{% endblock %}

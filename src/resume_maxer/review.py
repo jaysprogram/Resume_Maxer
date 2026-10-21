@@ -15,6 +15,7 @@ from resume_maxer.numbers import check_numbers
 from resume_maxer.resume_doc import ResumeDoc, problems
 from resume_maxer.schema import Master
 from resume_maxer.skills import unbacked_parts, vocabulary
+from resume_maxer.terms import backing_text, borrowed_terms, words
 
 
 @dataclass(frozen=True)
@@ -30,8 +31,9 @@ class Review:
         return not self.failures
 
 
-def check_document(doc: ResumeDoc, master: Master) -> Review:
-    """Everything decidable before compiling: structure, skills and number provenance."""
+def check_document(doc: ResumeDoc, master: Master, job_description: str | None = None) -> Review:
+    """Everything decidable before compiling: structure, skills and number provenance,
+    plus, given the posting, words borrowed from it that the facts never use."""
     failures = problems(doc, master)
     vocab = vocabulary(master)
     for line in doc.skills:
@@ -50,7 +52,26 @@ def check_document(doc: ResumeDoc, master: Master) -> Review:
         result = check_numbers(bullet.text, [master.metrics[m].text for m in metric_ids], tech)
         failures += [f"{key} {bullet.text!r}: {f}" for f in result.failures]
         flags += [f"{key} {bullet.text!r}: {f}" for f in result.flags]
+    if job_description:
+        flags += _borrowed_term_flags(doc, master, job_description)
     return Review(failures, flags)
+
+
+def _borrowed_term_flags(doc: ResumeDoc, master: Master, job_description: str) -> list[str]:
+    posting = words(job_description)
+    known_entries = {e.id for e in master.entries}
+    flags = []
+    for key, entry, bullet in doc.keyed_bullets():
+        if entry.entry_id not in known_entries:  # already a structure failure
+            continue
+        borrowed = borrowed_terms(bullet.text, backing_text(entry, bullet, master), posting)
+        if borrowed:
+            listed = ", ".join(repr(w) for w in borrowed)
+            flags.append(
+                f"{key} {bullet.text!r}: uses {listed} from the posting, which its facts "
+                "never mention; keep only if true"
+            )
+    return flags
 
 
 def chars_to_cut(text: str, ratio: float, fit_ratio: float = FIT_RATIO) -> int:
@@ -74,9 +95,14 @@ def _overflow_message(width: LineWidth, doc: ResumeDoc) -> str:
     )
 
 
-def review(doc: ResumeDoc, master: Master, compiled: CompileResult | None) -> Review:
+def review(
+    doc: ResumeDoc,
+    master: Master,
+    compiled: CompileResult | None,
+    job_description: str | None = None,
+) -> Review:
     """The full verdict. `compiled` is None when the document could not be rendered."""
-    found = check_document(doc, master)
+    found = check_document(doc, master, job_description)
     failures, shortfalls = list(found.failures), []
     if compiled is not None:
         empty = empty_lines(compiled)

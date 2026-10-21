@@ -1,0 +1,43 @@
+# deploy/setup.sh installs this as /etc/systemd/system/resume-maxer.service.
+[Unit]
+Description=Resume Maxer web app
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=resume-maxer
+Group=resume-maxer
+WorkingDirectory=/var/lib/resume-maxer
+# Secrets (password hash, session secret, API key), written by set-secrets.sh.
+EnvironmentFile=/etc/resume-maxer/env
+Environment=RESUME_DATA_DIR=/var/lib/resume-maxer/data
+Environment=RESUME_RUNS_DIR=/var/lib/resume-maxer/runs
+Environment=RESUME_BACKEND=api
+Environment=TECTONIC=/usr/local/bin/tectonic
+# Tectonic keeps its package cache here; ProtectHome hides the usual ~/.cache.
+Environment=XDG_CACHE_HOME=/var/lib/resume-maxer/cache
+ExecStart=/opt/resume-maxer/.venv/bin/resume-maxer serve --host 127.0.0.1 --port 8791
+Restart=on-failure
+RestartSec=2s
+
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/resume-maxer
+ProtectProc=invisible
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+SystemCallArchitectures=native
+MemoryMax=1500M
+
+[Install]
+WantedBy=multi-user.target

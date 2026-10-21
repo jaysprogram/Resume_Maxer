@@ -3,10 +3,7 @@
 Tailors a resume to a job description and compiles a one-page LaTeX PDF that
 parses cleanly in applicant tracking systems (ATS).
 
-> Status: early. The pipeline below is the agreed design. Implemented so far:
-> LaTeX escaping, the master-data schema/loader, the number check, rendering +
-> compiling a resume document to a measured one-page PDF, the writer call, the
-> check-and-repair loop, and the command line. A web app is next.
+> Status: working end to end: command line and a password-protected web app.
 
 ## Usage
 
@@ -27,6 +24,61 @@ fail, `2` an error (the message says what to fix).
 
 The default backend is Claude Code on a logged-in subscription; pass
 `--backend api` to use an API key instead (`uv run --env-file .env ...`).
+
+## Web app
+
+Paste a posting from a phone, get the PDF. `resume-maxer serve` runs it on
+`127.0.0.1:8000`; in production it sits behind a reverse proxy that adds HTTPS.
+
+```sh
+uv run resume-maxer hash-password   # prints the two settings below; paste them into the env file
+uv run --env-file .env resume-maxer serve
+```
+
+| Setting | Meaning |
+|---|---|
+| `RESUME_WEB_PASSWORD_HASH` | scrypt hash of the one password (never the password itself) |
+| `RESUME_WEB_SECRET` | 32+ random characters that sign the session cookie |
+| `RESUME_BACKEND` | `claude-code` (subscription) or `api` (API key); default `claude-code` |
+| `RESUME_RUNS_DIR` | where runs are kept; default `out/web` (gitignored) |
+| `RESUME_WEB_INSECURE_COOKIES` | `1` only to test over plain http on your own machine |
+
+- **Runs** take one to three minutes, so they are queued and worked one at a
+  time in the background. A run's page refreshes itself until the PDF is ready
+  (no JavaScript); runs survive restarts, and one cut off by a restart is
+  marked interrupted.
+- **Security:** one password, stored only as a scrypt hash; a signed session
+  cookie that is `HttpOnly`, `Secure` and `SameSite=Strict` (which also stops
+  other sites posting forms here); 5 failed logins per address per 15 minutes,
+  counted per visitor's real address via the proxy's `X-Forwarded-For` (trusted
+  only from localhost); no API docs; a strict Content-Security-Policy; pages
+  marked `no-store`; postings capped at 50,000 characters and oversized
+  requests refused before parsing; run IDs must be 32 hex characters, so a
+  crafted URL cannot reach other files.
+- `serve` checks the settings, the master data and the tools at startup, so a
+  misconfigured server fails at once rather than on the first run.
+
+### Deploy (Ubuntu, Caddy, systemd)
+
+`deploy/` holds everything for a server that already runs Caddy with
+`import /etc/caddy/sites/*.caddy`:
+
+1. Point a DNS A record (`resume.example.com`) at the server, and set that
+   name in `deploy/resume.caddy`.
+2. As root: `git clone` this repo to `/opt/resume-maxer`, then
+   `bash /opt/resume-maxer/deploy/setup.sh`. It creates the `resume-maxer`
+   system user, installs the pinned Tectonic (checksum-verified, the version CI
+   uses, from `deploy/tectonic.env`), builds the venv with the system Python,
+   warms Tectonic's font cache, installs the hardened systemd unit, and adds
+   the Caddy site (validating the whole Caddy config before reloading).
+3. Copy your master data to `/var/lib/resume-maxer/data/master.json`
+   (owner `resume-maxer`, mode `600`).
+4. Interactively on the server: `bash /opt/resume-maxer/deploy/set-secrets.sh`
+   (password, API key; nothing is echoed or put on a command line), then run
+   `setup.sh` again to start the service.
+
+Updates: push to GitHub, then rerun `setup.sh`. The server uses the `api`
+backend, so each run is billed to the API key (about $0.14 to $0.28 a resume).
 
 ## How it works (design)
 
@@ -188,8 +240,12 @@ count, every line's width, and missing glyphs.
   document over an unrendered one, then fewer failures, then fewer shortfalls,
   so an under-filled one-page draft beats a repair that spilled onto two pages;
   a tie goes to the repair) with the list of what still fails. Nothing is hidden.
-- **Flags** (a changed unit after a number) are shown for review and never
-  trigger a repair.
+- **Flags** are shown for review and never trigger a repair: a changed unit
+  after a number, and **borrowed terms** (`terms.py`): a bullet word that comes
+  from the posting but appears nowhere in that bullet's own facts (its master
+  wordings, tags, notes, metrics, entry stack, and the aliases of skills those
+  facts name). The writer may use the posting's vocabulary where the facts
+  support it; this lists every such word so a person can confirm it is true.
 
 ## The judge (advice only)
 

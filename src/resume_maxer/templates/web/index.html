@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Tailor a resume</h1>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+<form method="post" action="/runs" class="stack">
+  <label for="label">Name <span class="hint">(optional, e.g. company and role)</span></label>
+  <input id="label" name="label" type="text" maxlength="60" value="{{ label }}">
+  <label for="posting">Job description</label>
+  <textarea id="posting" name="posting" rows="12" required placeholder="Paste the whole posting here">{{ posting }}</textarea>
+  <button type="submit">Tailor</button>
+  <p class="hint">Takes one to three minutes. You can leave the page; the run keeps going.</p>
+</form>
+
+<h2>Recent runs</h2>
+{% if runs %}
+<ul class="runs">
+  {% for run in runs %}
+  <li>
+    <a href="/runs/{{ run.id }}">{{ run.label }}</a>
+    <span class="state state-{{ run.state }}">{% if run.state == "done" %}{{ "pass" if run.passed else "fail" }}{% else %}{{ run.state }}{% endif %}</span>
+    <span class="hint">{{ run.created[:16].replace("T", " ") }} UTC</span>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="hint">No runs yet.</p>
+{% endif %}
+{% endblock %}

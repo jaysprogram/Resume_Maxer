@@ -1,0 +1,12 @@
+# deploy/setup.sh installs this as /etc/caddy/sites/resume.caddy, with
+# resume.example.com replaced by the domain it is given.
+# Caddy gets the HTTPS certificate itself once the DNS record points here.
+resume.example.com {
+	request_body {
+		max_size 256KB
+	}
+	encode zstd gzip
+	# Caddy sends X-Forwarded-For; the app trusts it only from 127.0.0.1, so the
+	# login limiter counts each visitor's real address.
+	reverse_proxy 127.0.0.1:8791
+}

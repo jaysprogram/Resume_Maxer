@@ -7,9 +7,13 @@ license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
     "anthropic>=1.17.0",
+    "fastapi>=0.156.4",
+    "itsdangerous>=2.2.0",
     "jinja2>=3.1.6",
     "pydantic>=2.14.0",
     "pypdf>=6.20.0",
+    "python-multipart>=0.0.32",
+    "uvicorn>=0.54.0",
 ]
 
 [project.scripts]
@@ -30,6 +34,7 @@ testpaths = ["tests"]
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "pytest>=9.1.1",
     "ruff>=0.16.10",
 ]

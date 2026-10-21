@@ -7,10 +7,6 @@ on:
 permissions:
   contents: read
 
-env:
-  TECTONIC_VERSION: "0.17.0"
-  TECTONIC_SHA256: "1a715688baf591e650c8aeb160ae934e181685eecbb38b317de30b269ac5d606"
-
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -18,9 +14,11 @@ jobs:
       - uses: actions/checkout@v7
       # setup-uv publishes only full release tags (no floating v10 tag).
       - uses: astral-sh/setup-uv@v10.2.0
-      # A pinned release verified by checksum, not a piped install script.
+      # A pinned release verified by checksum, not a piped install script. The
+      # version and checksum live in one file, shared with deploy/setup.sh.
       - name: Install Tectonic
         run: |
+          set -a; . deploy/tectonic.env; set +a
           curl -fsSL -o tectonic.tar.gz \
             "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%40${TECTONIC_VERSION}/tectonic-${TECTONIC_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
           echo "${TECTONIC_SHA256}  tectonic.tar.gz" | sha256sum -c -

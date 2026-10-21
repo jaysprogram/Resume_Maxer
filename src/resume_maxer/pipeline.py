@@ -63,19 +63,22 @@ class Tailored:
 
 
 def check(
-    doc: ResumeDoc, master: Master, compile_fn: Callable[[str], CompileResult] = compile_tex
+    doc: ResumeDoc,
+    master: Master,
+    compile_fn: Callable[[str], CompileResult] = compile_tex,
+    job_description: str | None = None,
 ) -> tuple[Review, CompileResult | None]:
     """Review a document, compiling it when it can be rendered at all."""
     if problems(doc, master):  # render refuses these; review reports them
-        return review(doc, master, None), None
+        return review(doc, master, None, job_description), None
     compiled = compile_fn(render(doc, master))
-    return review(doc, master, compiled), compiled
+    return review(doc, master, compiled, job_description), compiled
 
 
-def _check(result: WriterResult, master: Master, compile_fn) -> Attempt:
+def _check(result: WriterResult, master: Master, compile_fn, job_description: str) -> Attempt:
     if result.parsed is None:
         return Attempt(result, None, None)
-    return Attempt(result, *check(result.parsed, master, compile_fn))
+    return Attempt(result, *check(result.parsed, master, compile_fn, job_description))
 
 
 def _rank(attempt: Attempt) -> tuple:
@@ -118,7 +121,8 @@ def tailor(
     attempts: list[Attempt] = []
     repair = None
     for _ in range(MAX_ATTEMPTS):
-        attempt = _check(write(master_json, job_description, repair=repair), master, compile_fn)
+        drafted = write(master_json, job_description, repair=repair)
+        attempt = _check(drafted, master, compile_fn, job_description)
         attempts.append(attempt)
         if attempt.review is not None and attempt.review.passed and not attempt.review.shortfalls:
             break

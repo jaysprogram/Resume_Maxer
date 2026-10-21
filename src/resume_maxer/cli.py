@@ -3,17 +3,23 @@
   resume-maxer tailor JOB.txt          write, check, repair once; PDF + JSON in out/
   resume-maxer tailor -                read the job description from stdin
   resume-maxer build out/JOB.json      recompile and recheck a hand-edited document
+  resume-maxer serve                   run the web app (see README "Web app")
+  resume-maxer hash-password           make the web app's password hash and secret
 
 Exit codes: 0 every check passed, 1 a PDF was written but checks still fail,
 2 nothing usable was produced (the message says why).
 """
 
 import argparse
+import getpass
+import os
+import secrets
 import sys
 from pathlib import Path
 
 from pydantic import ValidationError
 
+from resume_maxer.auth import hash_password
 from resume_maxer.claude import ClaudeError, find_claude
 from resume_maxer.compile import CompileError, find_tectonic
 from resume_maxer.judge import JUDGES
@@ -21,6 +27,15 @@ from resume_maxer.load import MASTER_FILENAME, MasterDataError, data_dir, load_m
 from resume_maxer.pipeline import Tailored, TailorError, check, tailor
 from resume_maxer.resume_doc import ResumeDoc
 from resume_maxer.review import Review
+from resume_maxer.web import (
+    BACKEND_ENV,
+    PASSWORD_HASH_ENV,
+    SECRET_ENV,
+    ConfigError,
+    WebConfig,
+    create_app,
+    tailor_with,
+)
 from resume_maxer.writer import BACKEND, BACKENDS
 
 OUT_DIR = Path("out")
@@ -148,14 +163,65 @@ def _parser() -> argparse.ArgumentParser:
     b.add_argument("document", help="resume document JSON, e.g. out/<job name>.json")
     b.add_argument("-o", "--output", type=Path, help="PDF path (default: beside the JSON)")
     b.set_defaults(run=cmd_build)
+
+    s = sub.add_parser("serve", help="run the web app (behind a reverse proxy in production)")
+    s.add_argument("--host", default="127.0.0.1", help="address to listen on (default: localhost)")
+    s.add_argument("--port", type=int, default=8000)
+    s.set_defaults(run=cmd_serve)
+
+    h = sub.add_parser("hash-password", help="print the web app's password hash and secret")
+    h.set_defaults(run=cmd_hash_password)
     return parser
+
+
+MIN_PASSWORD_CHARS = 12
+
+
+def cmd_hash_password(args: argparse.Namespace) -> int:
+    password = getpass.getpass("New web password: ")
+    if len(password) < MIN_PASSWORD_CHARS:
+        raise UsageError(f"use at least {MIN_PASSWORD_CHARS} characters")
+    if getpass.getpass("Again: ") != password:
+        raise UsageError("the passwords do not match")
+    print("# Paste into the server's environment file (keep it private):")
+    print(f"{PASSWORD_HASH_ENV}={hash_password(password)}")
+    print(f"{SECRET_ENV}={secrets.token_urlsafe(48)}")
+    return EXIT_PASSED
+
+
+def cmd_serve(args: argparse.Namespace) -> int:
+    import uvicorn
+
+    config = WebConfig.from_env()
+    backend = os.environ.get(BACKEND_ENV, BACKEND)
+    if backend not in BACKENDS:
+        raise UsageError(f"{BACKEND_ENV} must be one of {', '.join(sorted(BACKENDS))}")
+    # Check everything a run needs now, not on the first run from a phone.
+    load_master()
+    find_tectonic()
+    if backend == "claude-code":
+        find_claude()
+    app = create_app(config, tailor_with(backend))
+    # Trust X-Forwarded-For only from the local reverse proxy, so the login
+    # limiter sees each visitor's real address.
+    uvicorn.run(
+        app, host=args.host, port=args.port, proxy_headers=True, forwarded_allow_ips="127.0.0.1"
+    )
+    return EXIT_PASSED
 
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
         return args.run(args)
-    except (UsageError, MasterDataError, ClaudeError, TailorError, CompileError) as exc:
+    except (
+        UsageError,
+        MasterDataError,
+        ClaudeError,
+        TailorError,
+        CompileError,
+        ConfigError,
+    ) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_ERROR
 
