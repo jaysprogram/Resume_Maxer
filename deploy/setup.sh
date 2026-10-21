@@ -123,5 +123,14 @@ if ((${#missing[@]})); then
   exit 0
 fi
 systemctl restart $APP
-sleep 2
-curl -fsS "http://127.0.0.1:$PORT/healthz" && echo " <- $APP is up on 127.0.0.1:$PORT"
+# Startup takes ~10 s on a small server (imports, then serve's checks of the
+# master data and tools); wait for it rather than reporting a false failure.
+for _ in $(seq 30); do
+  if curl -fsS "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1; then
+    echo "$APP is up on 127.0.0.1:$PORT"
+    exit 0
+  fi
+  sleep 1
+done
+echo "$APP did not answer within 30 s; see: journalctl -u $APP -n 50" >&2
+exit 1
