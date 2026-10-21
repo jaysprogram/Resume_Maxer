@@ -32,11 +32,16 @@ DOMAIN=$(<"$ETC/domain")
 echo "== domain: $DOMAIN"
 
 echo "== code"
-if [[ -d $CODE/.git ]]; then
-  git -C "$CODE" fetch --quiet origin main
-  git -C "$CODE" reset --quiet --hard origin/main
-else
-  git clone --quiet "$REPO" "$CODE"
+if [[ -z ${RESUME_MAXER_SETUP_UPDATED:-} ]]; then
+  if [[ -d $CODE/.git ]]; then
+    git -C "$CODE" fetch --quiet origin main
+    git -C "$CODE" reset --quiet --hard origin/main
+  else
+    git clone --quiet "$REPO" "$CODE"
+  fi
+  # This script may itself have just changed. Bash keeps reading the old copy
+  # it opened, so restart from the new one (once) to run the current steps.
+  RESUME_MAXER_SETUP_UPDATED=1 exec bash "$CODE/deploy/setup.sh" "$@"
 fi
 git -C "$CODE" log --oneline -1
 # System Python only: a uv-managed Python would live under /root, which the
