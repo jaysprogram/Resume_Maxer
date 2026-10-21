@@ -10,6 +10,8 @@ Run from PowerShell (Windows) or any shell with uv:
 - `uv sync` — install dependencies into `.venv`
 - `uv run pytest` — run tests
 - `uv run ruff check .` and `uv run ruff format --check .` — lint and format
+- `uv run resume-maxer tailor JOB.txt` — tailor a resume (calls Claude; costs usage)
+- `uv run resume-maxer build out/JOB.json` — recheck + recompile an edited document (free)
 
 Tectonic 0.17.0 is installed on Windows at `%LOCALAPPDATA%\Programs\tectonic\tectonic.exe`
 (and in WSL at `~/.local/bin/tectonic`). Compile tests need it on `PATH` or the

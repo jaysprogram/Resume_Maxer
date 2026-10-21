@@ -49,13 +49,20 @@ class Tailored:
         return sum(a.writer.cost_usd for a in self.attempts)
 
 
+def check(
+    doc: ResumeDoc, master: Master, compile_fn: Callable[[str], CompileResult] = compile_tex
+) -> tuple[Review, CompileResult | None]:
+    """Review a document, compiling it when it can be rendered at all."""
+    if problems(doc, master):  # render refuses these; review reports them
+        return review(doc, master, None), None
+    compiled = compile_fn(render(doc, master))
+    return review(doc, master, compiled), compiled
+
+
 def _check(result: WriterResult, master: Master, compile_fn) -> Attempt:
     if result.doc is None:
         return Attempt(result, None, None)
-    if problems(result.doc, master):  # render refuses these; review reports them
-        return Attempt(result, review(result.doc, master, None), None)
-    compiled = compile_fn(render(result.doc, master))
-    return Attempt(result, review(result.doc, master, compiled), compiled)
+    return Attempt(result, *check(result.doc, master, compile_fn))
 
 
 def _rank(attempt: Attempt) -> tuple:

@@ -5,8 +5,28 @@ parses cleanly in applicant tracking systems (ATS).
 
 > Status: early. The pipeline below is the agreed design. Implemented so far:
 > LaTeX escaping, the master-data schema/loader, the number check, rendering +
-> compiling a resume document to a measured one-page PDF, the writer call, and
-> the check-and-repair loop. A command-line entry point is next.
+> compiling a resume document to a measured one-page PDF, the writer call, the
+> check-and-repair loop, and the command line. A web app is next.
+
+## Usage
+
+Put your master data in `data/master.json` (see [Master data](#master-data)),
+save a job description as a text file, then:
+
+```sh
+uv run resume-maxer tailor job.txt           # PDF + resume document in out/
+uv run resume-maxer tailor - < job.txt       # or read the posting from stdin
+uv run resume-maxer build out/job.json       # recheck + recompile after editing the JSON
+```
+
+`tailor` prints `PASS` or `FAIL` with anything that still fails, plus flags
+for review. It always writes the resume document (`out/job.json`) beside the
+PDF: edit a wording there and run `build` to recompile and recheck it with no
+model call. Exit codes: `0` passed, `1` a PDF was written but checks still
+fail, `2` an error (the message says what to fix).
+
+The default backend is Claude Code on a logged-in subscription; pass
+`--backend api` to use an API key instead (`uv run --env-file .env ...`).
 
 ## How it works (design)
 
